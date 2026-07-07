@@ -40,7 +40,7 @@ export default function Home() {
 
   const track = async (jid) => {
     const j = await (await fetch(API + "/api/progress/" + jid)).json();
-    if (j.error) return;
+    if (j.error && !j.status) return;   // API-level error (unknown job) — not a job that failed
     setJob(j);
     if (j.status === "done" || j.status === "error") {
       clearInterval(pollRef.current); pollRef.current = null; setSubmitting(false); loadStats();
@@ -132,6 +132,9 @@ export default function Home() {
             {job.total > 1 ? `Video ${job.current}/${job.total} · ${(job.videos || []).length} done` : ""}
             {status === "done" ? "  ✓ Ready to chat 🎉" : ""}
           </div>
+          {status === "error" && job.error && (
+            <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 8 }}>{job.error}</div>
+          )}
           {job.log?.length > 0 && <div className="log">{job.log.slice(-8).join("\n")}</div>}
         </div>
       )}
