@@ -30,6 +30,13 @@ export default function Home() {
     try { setStats(await (await fetch(API + "/api/stats")).json()); } catch {}
   };
   useEffect(() => { loadStats(); return () => clearInterval(pollRef.current); }, []);
+  // In the desktop app, stream live download/upload progress from Electron.
+  useEffect(() => {
+    const el = typeof window !== "undefined" ? window.electronAPI : null;
+    if (el?.onProgress) {
+      el.onProgress((d) => setJob((j) => ({ ...(j || {}), status: "running", step: d.step, progress: d.pct })));
+    }
+  }, []);
   useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
 
   const estimate = async () => {
@@ -48,14 +55,31 @@ export default function Home() {
   };
 
   const submit = async () => {
-    if (!url.trim()) return;
-    setSubmitting(true);
-    setJob({ status: "queued", step: "Starting…", progress: 0, log: [] });
-    const r = await post("/api/submit", { url });
-    if (r.error) { setJob({ status: "error", step: r.error }); setSubmitting(false); return; }
-    clearInterval(pollRef.current);
-    pollRef.current = setInterval(() => track(r.job_id), 1200);
-    track(r.job_id);
+    const link = url.trim();
+    if (!link) return;
+    const el = typeof window !== "undefined" ? window.electronAPI : null;
+
+    if (el?.isElectron) {
+      // Desktop app: download locally (user's own IP -> no YouTube block), upload, process.
+      setSubmitting(true);
+      setJob({ status: "running", step: "Starting…", progress: 0, log: [] });
+      try {
+        const result = await el.processYouTube(link);
+        setJob({ ...result, status: "done", progress: 100, step: "Done" });
+        loadStats();
+      } catch (e) {
+        setJob({ status: "error", step: "Failed", error: String(e?.message || e) });
+      }
+      setSubmitting(false);
+      return;
+    }
+
+    // Browser: the server can't download YouTube. Point users to the desktop app.
+    setJob({
+      status: "error",
+      step: "Desktop app needed to add videos",
+      error: "To add videos, install the VidMind desktop app — a browser can't download from YouTube. (Chat works right here in the browser.)",
+    });
   };
 
   const ask = async () => {
