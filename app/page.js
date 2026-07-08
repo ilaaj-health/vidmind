@@ -1,202 +1,200 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 
-// "" in dev (Next.js proxies /api -> backend). In prod set NEXT_PUBLIC_API_BASE
-// to the backend URL so the browser calls it directly (no serverless timeout).
-const API = process.env.NEXT_PUBLIC_API_BASE || "";
+const Hero3D = dynamic(() => import("./components/Hero3D"), { ssr: false });
 
-async function post(path, body) {
-  const r = await fetch(API + path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  return r.json();
+// The desktop installer, hosted on GitHub Releases.
+const DOWNLOAD_URL =
+  "https://github.com/ilaaj-health/vidmind/releases/download/v0.1.0/VidMind-win32-x64.zip";
+const APP_URL = "/app";
+
+function WinIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M3 5.5 10.5 4.5v7H3zM10.5 12.5v7L3 18.5v-6zM11.5 4.3 21 3v8.5h-9.5zM21 12.5V21l-9.5-1.3v-7.2z" />
+    </svg>
+  );
 }
 
-export default function Home() {
-  const [url, setUrl] = useState("");
-  const [est, setEst] = useState(null);
-  const [job, setJob] = useState(null);
-  const [stats, setStats] = useState(null);
-  const [q, setQ] = useState("");
-  const [msgs, setMsgs] = useState([]);
-  const [busy, setBusy] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const pollRef = useRef(null);
-  const end = useRef(null);
-
-  const loadStats = async () => {
-    try { setStats(await (await fetch(API + "/api/stats")).json()); } catch {}
-  };
-  useEffect(() => { loadStats(); return () => clearInterval(pollRef.current); }, []);
-  // In the desktop app, stream live download/upload progress from Electron.
-  useEffect(() => {
-    const el = typeof window !== "undefined" ? window.electronAPI : null;
-    if (el?.onProgress) {
-      el.onProgress((d) => setJob((j) => ({ ...(j || {}), status: "running", step: d.step, progress: d.pct })));
-    }
-  }, []);
-  useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
-
-  const estimate = async () => {
-    if (!url.trim()) return;
-    setEst({ loading: true });
-    setEst(await post("/api/estimate", { url }));
-  };
-
-  const track = async (jid) => {
-    const j = await (await fetch(API + "/api/progress/" + jid)).json();
-    if (j.error && !j.status) return;   // API-level error (unknown job) — not a job that failed
-    setJob(j);
-    if (j.status === "done" || j.status === "error") {
-      clearInterval(pollRef.current); pollRef.current = null; setSubmitting(false); loadStats();
-    }
-  };
-
-  const submit = async () => {
-    const link = url.trim();
-    if (!link) return;
-    const el = typeof window !== "undefined" ? window.electronAPI : null;
-
-    if (el?.isElectron) {
-      // Desktop app: download locally (user's own IP -> no YouTube block), upload, process.
-      setSubmitting(true);
-      setJob({ status: "running", step: "Starting…", progress: 0, log: [] });
-      try {
-        const result = await el.processYouTube(link);
-        setJob({ ...result, status: "done", progress: 100, step: "Done" });
-        loadStats();
-      } catch (e) {
-        setJob({ status: "error", step: "Failed", error: String(e?.message || e) });
-      }
-      setSubmitting(false);
-      return;
-    }
-
-    // Browser: the server can't download YouTube. Point users to the desktop app.
-    setJob({
-      status: "error",
-      step: "Desktop app needed to add videos",
-      error: "To add videos, install the VidMind desktop app — a browser can't download from YouTube. (Chat works right here in the browser.)",
-    });
-  };
-
-  const ask = async () => {
-    const question = q.trim();
-    if (!question || busy) return;
-    setQ(""); setBusy(true);
-    setMsgs((m) => [...m, { who: "user", text: question }, { who: "ai", typing: true }]);
-    const r = await post("/api/chat", { question });
-    setMsgs((m) => {
-      const c = m.slice(0, -1);
-      c.push({ who: "ai", text: r.error ? "⚠️ " + r.error : r.answer, refs: r.references || [] });
-      return c;
-    });
-    setBusy(false);
-  };
-
-  const status = job?.status;
-
+export default function Landing() {
   return (
-    <div className="wrap">
-      <div className="nav">
-        <div className="brand">
-          <span className="logo">
-            <svg width="20" height="20" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="#fff" /></svg>
-          </span>
-          VidMind
-        </div>
-        {stats && (
-          <div className="badge"><span className="dot" /> {Number(stats.points).toLocaleString()} chunks · {stats.lang}</div>
-        )}
-      </div>
+    <div className="lp">
+      <Hero3D />
+      <div className="veil" />
 
-      <h1 className="h-title">
-        Turn any <span className="grad">YouTube video</span> into a chattable knowledge base.
-      </h1>
-      <p className="h-sub">
-        Paste a video or channel link — we transcribe it, index it, and let you ask questions
-        in any language with cited answers.
-      </p>
+      <div className="inner">
+        <nav className="nav">
+          <div className="brand">
+            <span className="logo">
+              <svg width="18" height="18" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="#fff" /></svg>
+            </span>
+            VidMind
+          </div>
+          <div className="nav-links">
+            <a href="#how">How it works</a>
+            <a href="#features">Features</a>
+            <a className="ghost-btn" href={APP_URL}>Open web app →</a>
+          </div>
+        </nav>
 
-      <div className="card fade">
-        <div className="card-h"><span className="ic">➕</span> Add content</div>
-        <div className="field">
-          <input className="input" value={url} onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://youtube.com/watch?v=…   or a channel / @handle" />
-          <button className="btn ghost" onClick={estimate}>Estimate</button>
-          <button className="btn" onClick={submit} disabled={submitting}>
-            {submitting ? "Processing…" : "Process"}
-          </button>
-        </div>
-        {est && !est.loading && !est.error && (
-          <div className="estimate fade">
-            <div className="stat"><b>{est.count}</b><span>video(s)</span></div>
-            <div className="stat"><b>{est.total_minutes}</b><span>minutes</span></div>
-            <div className="stat cost"><b>${est.est_cost_usd}</b><span>est. transcription</span></div>
-          </div>
-        )}
-        {est?.loading && <div className="estimate fade" style={{ color: "var(--mut)" }}>Scanning…</div>}
-        {est?.error && <div className="estimate fade" style={{ color: "var(--danger)" }}>⚠️ {est.error}</div>}
-      </div>
+        <header className="hero">
+          <div className="pill"><span className="pdot" /> Desktop app · Windows</div>
+          <h1>
+            Turn any <span className="grad">YouTube video</span><br />
+            into a chattable <span className="grad2">knowledge base</span>.
+          </h1>
+          <p className="sub">
+            Paste a video or channel — VidMind transcribes it, indexes it, and lets you ask
+            questions in any language with cited answers. Downloads run on your own machine,
+            so there are no blocks and no proxies.
+          </p>
 
-      {job && (
-        <div className="card fade">
-          <div className="step-row">
-            {status === "done" ? <span style={{ color: "var(--ok)" }}>✓</span>
-              : status === "error" ? <span style={{ color: "var(--danger)" }}>✕</span>
-              : <span className="spinner" />}
-            <span>{job.step || status}</span>
+          <div className="cta">
+            <a className="dl" href={DOWNLOAD_URL}>
+              <WinIcon /> Download for Windows
+              <span className="dl-sub">Free · Windows 10/11 · ~113 MB</span>
+            </a>
+            <a className="try" href={APP_URL}>Try the chat in your browser</a>
           </div>
-          <div className="progress-track">
-            <div className="progress-fill" style={{ width: (job.progress || 0) + "%" }} />
-          </div>
-          <div style={{ color: "var(--mut)", fontSize: 13 }}>
-            {job.total > 1 ? `Video ${job.current}/${job.total} · ${(job.videos || []).length} done` : ""}
-            {status === "done" ? "  ✓ Ready to chat 🎉" : ""}
-          </div>
-          {status === "error" && job.error && (
-            <div style={{ color: "var(--danger)", fontSize: 13, marginTop: 8 }}>{job.error}</div>
-          )}
-          {job.log?.length > 0 && <div className="log">{job.log.slice(-8).join("\n")}</div>}
-        </div>
-      )}
+          <div className="note">No account needed · Your videos download locally on your PC</div>
+        </header>
 
-      <div className="card fade">
-        <div className="card-h"><span className="ic">💬</span> Chat</div>
-        <div className="chat">
-          {msgs.length === 0 && (
-            <div className="empty">
-              <div className="big">🧠</div>
-              Ask anything about your indexed videos — English, Roman Urdu, or Urdu.
-            </div>
-          )}
-          {msgs.map((m, i) => (
-            <div key={i} className={"msg fade " + (m.who === "user" ? "user" : "ai")}>
-              <span className={"av " + (m.who === "user" ? "user" : "ai")}>{m.who === "user" ? "🧑" : "🤖"}</span>
-              <div>
-                <div className="bubble">
-                  {m.typing ? <span className="typing"><i /><i /><i /></span> : m.text}
-                </div>
-                {m.refs?.length > 0 && (
-                  <div className="refs">
-                    {m.refs.map((r) => (
-                      <span key={r.n} className="ref"><b>[{r.n}]</b> {(r.source || "").slice(0, 44)} · {r.idx}</span>
-                    ))}
-                  </div>
-                )}
+        <section id="how" className="how">
+          <div className="sec-h"><span>How it works</span></div>
+          <div className="steps">
+            {[
+              { n: "01", t: "Paste a link", d: "Drop any YouTube video or channel URL into the desktop app." },
+              { n: "02", t: "It processes locally", d: "The app downloads the audio on your machine, then transcribes & indexes it in the cloud." },
+              { n: "03", t: "Chat with cited answers", d: "Ask anything — English, Roman Urdu, or Urdu — and get answers with sources." },
+            ].map((s) => (
+              <div key={s.n} className="step">
+                <div className="step-n">{s.n}</div>
+                <div className="step-t">{s.t}</div>
+                <div className="step-d">{s.d}</div>
               </div>
-            </div>
-          ))}
-          <div ref={end} />
-        </div>
-        <div className="field">
-          <input className="input" value={q} onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && ask()} placeholder="Ask a question…" />
-          <button className="btn" onClick={ask} disabled={busy}>Send</button>
-        </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="features" className="features">
+          <div className="sec-h"><span>Built for real content</span></div>
+          <div className="grid">
+            {[
+              { i: "🌐", t: "Any language", d: "Multilingual retrieval — Urdu, English, or mixed. No single language wins." },
+              { i: "🔗", t: "Interlinked knowledge", d: "A knowledge graph connects people, places & topics across videos." },
+              { i: "📎", t: "Cited answers", d: "Every answer points back to the exact source it came from." },
+              { i: "⚡", t: "No proxies, no blocks", d: "Audio downloads on your own IP — YouTube never blocks you." },
+              { i: "🎧", t: "Videos or channels", d: "Process a single talk or a whole channel's back-catalogue." },
+              { i: "🔒", t: "Runs on your machine", d: "The heavy download happens locally; only audio goes to the server." },
+            ].map((f) => (
+              <div key={f.t} className="feat">
+                <div className="feat-i">{f.i}</div>
+                <div className="feat-t">{f.t}</div>
+                <div className="feat-d">{f.d}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="final">
+          <h2>Ready to chat with your videos?</h2>
+          <a className="dl big" href={DOWNLOAD_URL}>
+            <WinIcon /> Download VidMind for Windows
+          </a>
+          <div className="note">Prefer just chatting? <a href={APP_URL}>Open the web app →</a></div>
+        </section>
+
+        <footer className="foot">
+          <span>VidMind</span>
+          <span>Built for creators & researchers · 2026</span>
+        </footer>
       </div>
+
+      <style jsx>{`
+        .lp { position: relative; min-height: 100vh; overflow-x: hidden;
+          background:
+            radial-gradient(1100px 600px at 15% -10%, rgba(124,92,255,.22), transparent 60%),
+            radial-gradient(900px 600px at 110% 0%, rgba(91,140,255,.16), transparent 55%),
+            #07080c; color: #eceef4; }
+        .veil { position: fixed; inset: 0; z-index: 1; pointer-events: none;
+          background: radial-gradient(1200px 700px at 50% 30%, transparent 40%, rgba(7,8,12,.55) 100%); }
+        .inner { position: relative; z-index: 2; max-width: 1080px; margin: 0 auto; padding: 0 22px 70px; }
+
+        .nav { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+        .brand { display: flex; align-items: center; gap: 11px; font-weight: 800; font-size: 19px; letter-spacing: -.02em; }
+        .logo { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
+          background: linear-gradient(135deg, #7c5cff, #5b8cff); box-shadow: 0 8px 22px -6px rgba(124,92,255,.75); }
+        .nav-links { display: flex; align-items: center; gap: 22px; font-size: 14px; color: #b7bccb; }
+        .nav-links a { color: inherit; text-decoration: none; transition: color .15s; }
+        .nav-links a:hover { color: #fff; }
+        .ghost-btn { border: 1px solid rgba(255,255,255,.16); padding: 8px 15px; border-radius: 10px;
+          background: rgba(255,255,255,.03); backdrop-filter: blur(8px); }
+
+        .hero { text-align: center; padding: 70px 0 60px; }
+        .pill { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: #cdd2e0;
+          border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); backdrop-filter: blur(8px);
+          padding: 7px 14px; border-radius: 999px; margin-bottom: 26px; }
+        .pdot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; box-shadow: 0 0 0 3px rgba(52,211,153,.18); }
+        .hero h1 { font-size: clamp(34px, 6vw, 62px); line-height: 1.05; font-weight: 850; letter-spacing: -.035em;
+          margin: 0 0 22px; }
+        .grad { background: linear-gradient(120deg, #c4b5fd, #93c5fd 60%, #a7f3d0);
+          -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .grad2 { background: linear-gradient(120deg, #93c5fd, #c4b5fd);
+          -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .sub { color: #9aa0b2; max-width: 640px; margin: 0 auto 34px; font-size: clamp(15px, 2vw, 17px); line-height: 1.65; }
+
+        .cta { display: flex; gap: 16px; justify-content: center; align-items: center; flex-wrap: wrap; }
+        .dl { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; text-decoration: none;
+          color: #fff; font-weight: 750; font-size: 16px; padding: 15px 30px; border-radius: 14px;
+          background: linear-gradient(135deg, #7c5cff, #5b8cff);
+          box-shadow: 0 16px 40px -12px rgba(124,92,255,.8); transition: transform .16s, box-shadow .16s; position: relative; }
+        .dl svg { vertical-align: -3px; margin-right: 8px; display: inline; }
+        .dl:hover { transform: translateY(-2px); box-shadow: 0 22px 50px -12px rgba(124,92,255,.9); }
+        .dl-sub { font-size: 11.5px; font-weight: 500; color: rgba(255,255,255,.8); letter-spacing: .01em; }
+        .try { color: #cdd2e0; text-decoration: none; font-size: 15px; border-bottom: 1px solid rgba(255,255,255,.25);
+          padding-bottom: 2px; transition: color .15s; }
+        .try:hover { color: #fff; }
+        .note { color: #6b7186; font-size: 13px; margin-top: 20px; }
+        .note a { color: #93c5fd; text-decoration: none; }
+
+        .sec-h { display: flex; justify-content: center; margin-bottom: 34px; }
+        .sec-h span { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: #7c8296;
+          border: 1px solid rgba(255,255,255,.1); border-radius: 999px; padding: 6px 16px; }
+
+        .how { padding: 60px 0; }
+        .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+        .step { border: 1px solid rgba(255,255,255,.09); border-radius: 18px; padding: 26px 22px;
+          background: linear-gradient(180deg, rgba(23,26,34,.7), rgba(20,22,29,.55)); backdrop-filter: blur(10px); }
+        .step-n { font-size: 13px; font-weight: 800; letter-spacing: .1em;
+          background: linear-gradient(120deg, #c4b5fd, #93c5fd); -webkit-background-clip: text; background-clip: text;
+          color: transparent; margin-bottom: 14px; }
+        .step-t { font-weight: 750; font-size: 18px; margin-bottom: 8px; letter-spacing: -.01em; }
+        .step-d { color: #9aa0b2; font-size: 14.5px; line-height: 1.6; }
+
+        .features { padding: 50px 0; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .feat { border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 22px;
+          background: rgba(255,255,255,.02); transition: border-color .2s, transform .2s; }
+        .feat:hover { border-color: rgba(124,92,255,.45); transform: translateY(-3px); }
+        .feat-i { font-size: 24px; margin-bottom: 12px; }
+        .feat-t { font-weight: 700; font-size: 16px; margin-bottom: 7px; }
+        .feat-d { color: #9aa0b2; font-size: 14px; line-height: 1.6; }
+
+        .final { text-align: center; padding: 80px 0 40px; }
+        .final h2 { font-size: clamp(26px, 4vw, 40px); font-weight: 800; letter-spacing: -.03em; margin: 0 0 28px; }
+        .dl.big { flex-direction: row; align-items: center; gap: 4px; }
+        .final .note { margin-top: 22px; }
+
+        .foot { display: flex; justify-content: space-between; align-items: center; padding: 40px 0 0;
+          border-top: 1px solid rgba(255,255,255,.07); margin-top: 50px; color: #6b7186; font-size: 13px; }
+        .foot span:first-child { font-weight: 700; color: #b7bccb; }
+
+        @media (max-width: 760px) {
+          .nav-links a:not(.ghost-btn) { display: none; }
+          .steps, .grid { grid-template-columns: 1fr; }
+          .hero { padding: 46px 0 40px; }
+        }
+      `}</style>
     </div>
   );
 }
