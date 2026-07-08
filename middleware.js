@@ -8,9 +8,7 @@ export default clerkMiddleware(async (auth, req) => {
 });
 
 export const config = {
-  matcher: [
-    // run on everything except static files, plus API routes
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/(api|trpc)(.*)",
-  ],
+  // Only the authed routes run Clerk middleware. The landing page (/) is never matched,
+  // so it stays up regardless of Clerk configuration.
+  matcher: ["/app", "/app/:path*", "/sign-in/:path*", "/sign-up/:path*"],
 };
