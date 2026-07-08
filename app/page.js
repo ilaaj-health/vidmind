@@ -3,9 +3,9 @@ import dynamic from "next/dynamic";
 
 const Hero3D = dynamic(() => import("./components/Hero3D"), { ssr: false });
 
-// The desktop installer, hosted on a PUBLIC GitHub Releases repo (code stays private).
+// The desktop installer, hosted on the vidmind repo's GitHub Release (repo is public).
 const DOWNLOAD_URL =
-  "https://github.com/ilaaj-health/vidmind-releases/releases/download/v0.1.0/VidMind-win32-x64.zip";
+  "https://github.com/ilaaj-health/vidmind/releases/download/v0.1.0/VidMind-win32-x64.zip";
 const APP_URL = "/app";
 
 function WinIcon() {
