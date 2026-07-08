@@ -16,6 +16,24 @@ function WinIcon() {
   );
 }
 
+// Line icons for the feature cards (stroke = currentColor).
+const ICONS = {
+  globe: (<><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3c2.6 2.9 2.6 15.1 0 18M12 3c-2.6 2.9-2.6 15.1 0 18" /></>),
+  graph: (<><circle cx="6" cy="7" r="2.1" /><circle cx="18" cy="7" r="2.1" /><circle cx="12" cy="18" r="2.1" /><path d="M8 7.4h8M7.4 8.8l3.5 7.3M16.6 8.8l-3.5 7.3" /></>),
+  quote: (<><rect x="4.5" y="3" width="15" height="18" rx="2.2" /><path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4" /></>),
+  shield: (<><path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z" /><path d="M12.6 8.4l-2.6 4.1h3l-2.6 4.1" /></>),
+  video: (<><rect x="3" y="6.5" width="12.5" height="11" rx="2.2" /><path d="M7.7 10.1v3.8l3.3-1.9z" /><path d="M18.5 8.7v8.6M21 10.2v5.6" /></>),
+  desktop: (<><rect x="3" y="4.5" width="18" height="12" rx="2" /><path d="M8.5 20.5h7M12 16.5v4" /></>),
+};
+function FIcon({ name }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      {ICONS[name]}
+    </svg>
+  );
+}
+
 export default function Landing() {
   return (
     <div className="lp">
@@ -80,15 +98,15 @@ export default function Landing() {
           <div className="sec-h"><span>Built for real content</span></div>
           <div className="grid">
             {[
-              { i: "🌐", t: "Any language", d: "Multilingual retrieval — Urdu, English, or mixed. No single language wins." },
-              { i: "🔗", t: "Interlinked knowledge", d: "A knowledge graph connects people, places & topics across videos." },
-              { i: "📎", t: "Cited answers", d: "Every answer points back to the exact source it came from." },
-              { i: "⚡", t: "No proxies, no blocks", d: "Audio downloads on your own IP — YouTube never blocks you." },
-              { i: "🎧", t: "Videos or channels", d: "Process a single talk or a whole channel's back-catalogue." },
-              { i: "🔒", t: "Runs on your machine", d: "The heavy download happens locally; only audio goes to the server." },
+              { i: "globe", t: "Any language", d: "Multilingual retrieval — Urdu, English, or mixed. No single language wins." },
+              { i: "graph", t: "Interlinked knowledge", d: "A knowledge graph connects people, places & topics across videos." },
+              { i: "quote", t: "Cited answers", d: "Every answer points back to the exact source it came from." },
+              { i: "shield", t: "No proxies, no blocks", d: "Audio downloads on your own IP — YouTube never blocks you." },
+              { i: "video", t: "Videos or channels", d: "Process a single talk or a whole channel's back-catalogue." },
+              { i: "desktop", t: "Runs on your machine", d: "The heavy download happens locally; only audio goes to the server." },
             ].map((f) => (
               <div key={f.t} className="feat">
-                <div className="feat-i">{f.i}</div>
+                <div className="feat-i"><FIcon name={f.i} /></div>
                 <div className="feat-t">{f.t}</div>
                 <div className="feat-d">{f.d}</div>
               </div>
@@ -176,7 +194,11 @@ export default function Landing() {
         .feat { border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 22px;
           background: rgba(255,255,255,.02); transition: border-color .2s, transform .2s; }
         .feat:hover { border-color: rgba(124,92,255,.45); transform: translateY(-3px); }
-        .feat-i { font-size: 24px; margin-bottom: 12px; }
+        .feat-i { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+          margin-bottom: 14px; color: #c4b5fd;
+          background: linear-gradient(135deg, rgba(124,92,255,.22), rgba(91,140,255,.14));
+          border: 1px solid rgba(124,92,255,.28); }
+        .feat:hover .feat-i { color: #fff; }
         .feat-t { font-weight: 700; font-size: 16px; margin-bottom: 7px; }
         .feat-d { color: #9aa0b2; font-size: 14px; line-height: 1.6; }
 
