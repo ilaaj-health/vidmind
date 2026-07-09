@@ -6,8 +6,6 @@ import { ClerkProvider } from "@clerk/nextjs";
 const PUB_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
   "pk_test_Zml0dGluZy1yb2Jpbi03NS5jbGVyay5hY2NvdW50cy5kZXYk";
 
-export const dynamic = "force-dynamic"; // auth-gated — never static-prerender
-
 export default function AppLayout({ children }) {
   return <ClerkProvider publishableKey={PUB_KEY}>{children}</ClerkProvider>;
 }

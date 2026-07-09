@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { UserButton, useAuth } from "@clerk/nextjs";
+import { UserButton, useAuth, SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
 
 const API = process.env.NEXT_PUBLIC_API_BASE || "";
 
@@ -135,6 +135,9 @@ export default function App() {
   const stage = stageIndex(job);
 
   return (
+    <>
+      <SignedOut><RedirectToSignIn /></SignedOut>
+      <SignedIn>
     <div className="shell">
       <aside className="side">
         <div className="brand"><span className="logo"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="#fff" /></svg></span>VidMind</div>
@@ -249,6 +252,8 @@ export default function App() {
 
       <style jsx>{STYLES}</style>
     </div>
+      </SignedIn>
+    </>
   );
 }
 

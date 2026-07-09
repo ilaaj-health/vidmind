@@ -5,15 +5,12 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 const PUB_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
   "pk_test_Zml0dGluZy1yb2Jpbi03NS5jbGVyay5hY2NvdW50cy5kZXYk";
 
-// Only /home (the actual product) needs login. The landing page (/) stays public.
-const isProtected = createRouteMatcher(["/home(.*)"]);
-
-export default clerkMiddleware(async (auth, req) => {
-  if (isProtected(req)) await auth.protect();
-}, { publishableKey: PUB_KEY });
+// clerkMiddleware must exist for Clerk to work, but /home is gated CLIENT-SIDE (SignedIn/
+// SignedOut) instead of here — server middleware on /home made Vercel 404 the route.
+export default clerkMiddleware(async () => {}, { publishableKey: PUB_KEY });
 
 export const config = {
   // Only the authed routes run Clerk middleware. The landing page (/) is never matched,
   // so it stays up regardless of Clerk configuration.
-  matcher: ["/home", "/home/:path*", "/sign-in/:path*", "/sign-up/:path*"],
+  matcher: ["/sign-in/:path*", "/sign-up/:path*"],
 };
