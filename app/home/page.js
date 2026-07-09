@@ -59,6 +59,7 @@ function Icon({ name, size = 16 }) {
     link: <><path d="M9.5 14.5l5-5" /><path d="M11 6.5l1-1a3.5 3.5 0 0 1 5 5l-2 2" /><path d="M13 17.5l-1 1a3.5 3.5 0 0 1-5-5l2-2" /></>,
     trash: <><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 12.5h9l1-12.5M10 10.5v6M14 10.5v6" /></>,
     eye: <><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="3" /></>,
+    globe: <><circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.6 2.6 2.6 14.4 0 17M12 3.5c-2.6 2.6-2.6 14.4 0 17" /></>,
   }[name] || null;
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{p}</svg>;
@@ -92,7 +93,7 @@ export default function App() {
   const [spaces, setSpaces] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [wallet, setWallet] = useState(null);
-  const [view, setView] = useState("chat");
+  const [videosOpen, setVideosOpen] = useState(false);
   const [videos, setVideos] = useState([]);
   const [addOpen, setAddOpen] = useState(false);
   const [pOpen, setPOpen] = useState(false);
@@ -175,6 +176,12 @@ export default function App() {
     } finally {
       setCreating(false);
     }
+  };
+
+  const publishPersonality = async () => {
+    if (!active || active.publish_status === "pending" || active.publish_status === "published") return;
+    await apiPost(`/api/spaces/${active.id}/publish`, {}).catch(() => ({}));
+    setSpaces((x) => x.map((p) => (p.id === active.id ? { ...p, publish_status: "pending" } : p)));
   };
 
   const deletePersonality = async (s) => {
@@ -284,12 +291,6 @@ export default function App() {
           <button className="prow add" onClick={() => setPOpen(true)}><Icon name="plus" size={14} /> New personality</button>
         </div>
 
-        <div className="lbl">View</div>
-        <nav className="nav">
-          <button className={"ni " + (view === "chat" ? "on" : "")} onClick={() => setView("chat")}><Icon name="chat" size={15} /> Chat</button>
-          <button className={"ni " + (view === "videos" ? "on" : "")} onClick={() => setView("videos")}><Icon name="video" size={15} /> Videos</button>
-        </nav>
-
         <div className="foot">
           <div className="wal"><Icon name="wallet" size={14} /><span>{wallet == null ? "Rs —" : `Rs ${Number(wallet).toLocaleString()}`}</span><button className="tu" onClick={() => setTopupOpen(true)}>Top up</button></div>
           <div className="ur"><UserButton afterSignOutUrl="/" /><span>Account</span></div>
@@ -302,30 +303,40 @@ export default function App() {
             <span className="thav">{active?.image_url ? <img src={active.image_url} alt="" /> : initial(active)}</span>
             <div><div className="tn">{active ? active.name : "…"}{active?.status === "deceased" && <span className="mem">In memory</span>}</div><div className="tp">{active?.persona || "Chat with this personality's videos"}</div></div>
           </div>
-          <button className="btn" onClick={() => { setJob(null); setAddOpen(true); }}><Icon name="plus" size={15} /> Add video</button>
+          <div className="thbtns">
+            {active && (active.publish_status === "published"
+              ? <span className="pubbadge pub"><Icon name="check" size={13} /> Published</span>
+              : active.publish_status === "pending"
+                ? <span className="pubbadge pend">Pending review</span>
+                : <button className="btn ghost" onClick={publishPersonality} title="Submit for review to appear in the public gallery"><Icon name="globe" size={15} /> Publish</button>)}
+            <button className="btn ghost" onClick={() => { loadVideos(activeId); setVideosOpen(true); }}><Icon name="video" size={15} /> Knowledge{videos.length ? ` · ${videos.length}` : ""}</button>
+            <button className="btn" onClick={() => { setJob(null); setAddOpen(true); }}><Icon name="plus" size={15} /> Add video</button>
+          </div>
         </header>
 
-        {view === "chat" ? (
-          <section className="pane">
-            <div className="chat">
-              {msgs.length === 0 && <div className="empty"><span className="eav">{active?.image_url ? <img src={active.image_url} alt="" /> : initial(active)}</span><div className="et">Chat with {active?.name || "personality"}</div><div className="es">Ask anything about their videos — cited answers in any language.</div></div>}
-              {msgs.map((m, i) => (
-                <div key={i} className={"msg " + m.who}>
-                  <span className={"av " + m.who}>{m.who === "ai" ? <Icon name="bot" size={14} /> : <Icon name="user" size={14} />}</span>
-                  <div className="mw"><div className="bub">{m.typing ? <span className="typ"><i /><i /><i /></span> : (m.who === "ai" ? <Markdown text={m.text} /> : m.text)}</div>{m.refs?.length > 0 && <div className="refs">{m.refs.slice(0, 4).map((r) => <span key={r.n} className="ref">[{r.n}] {(r.source || "").slice(0, 36)}</span>)}</div>}</div>
-                </div>
-              ))}
-              <div ref={end} />
-            </div>
-            <div className="comp"><input className="cin" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && ask()} placeholder={`Message ${active?.name || "personality"}…`} /><button className="cs" onClick={ask} disabled={busy}><Icon name="send" size={15} /></button></div>
-          </section>
-        ) : (
-          <section className="pane">
-            <div className="vhead">Videos in {active?.name} <span>{videos.length}</span></div>
+        <section className="pane">
+          <div className="chat">
+            {msgs.length === 0 && <div className="empty"><span className="eav">{active?.image_url ? <img src={active.image_url} alt="" /> : initial(active)}</span><div className="et">Chat with {active?.name || "personality"}</div><div className="es">Ask anything about their videos — cited answers in any language.</div></div>}
+            {msgs.map((m, i) => (
+              <div key={i} className={"msg " + m.who}>
+                <span className={"av " + m.who}>{m.who === "ai" ? <Icon name="bot" size={14} /> : <Icon name="user" size={14} />}</span>
+                <div className="mw"><div className="bub">{m.typing ? <span className="typ"><i /><i /><i /></span> : (m.who === "ai" ? <Markdown text={m.text} /> : m.text)}</div>{m.refs?.length > 0 && <div className="refs">{m.refs.slice(0, 4).map((r) => <span key={r.n} className="ref">[{r.n}] {(r.source || "").slice(0, 36)}</span>)}</div>}</div>
+              </div>
+            ))}
+            <div ref={end} />
+          </div>
+          <div className="comp"><input className="cin" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && ask()} placeholder={`Message ${active?.name || "personality"}…`} /><button className="cs" onClick={ask} disabled={busy}><Icon name="send" size={15} /></button></div>
+        </section>
+      </main>
+
+      {videosOpen && (
+        <div className="mbg" onClick={() => setVideosOpen(false)}>
+          <div className="modal wide" onClick={(e) => e.stopPropagation()}>
+            <div className="mh"><b>Knowledge · {active?.name}</b><button className="x" onClick={() => setVideosOpen(false)}><Icon name="close" size={17} /></button></div>
             {videos.length === 0 ? (
-              <div className="empty"><Icon name="video" size={30} /><div className="et" style={{ marginTop: 12 }}>No videos yet</div><div className="es">Add a YouTube video to this personality.</div><button className="btn" style={{ marginTop: 16 }} onClick={() => { setJob(null); setAddOpen(true); }}><Icon name="plus" size={15} /> Add video</button></div>
+              <div className="empty" style={{ padding: "26px 0" }}><Icon name="video" size={30} /><div className="et" style={{ marginTop: 12 }}>No videos yet</div><div className="es">Add a YouTube video to this personality.</div><button className="btn" style={{ marginTop: 16 }} onClick={() => { setVideosOpen(false); setJob(null); setAddOpen(true); }}><Icon name="plus" size={15} /> Add video</button></div>
             ) : (
-              <div className="vtblwrap">
+              <div className="vtblwrap" style={{ overflowY: "auto" }}>
                 <table className="vtbl">
                   <thead><tr><th>Video</th><th>Added</th><th>Chunks</th><th className="ta-r">Actions</th></tr></thead>
                   <tbody>
@@ -345,9 +356,9 @@ export default function App() {
                 </table>
               </div>
             )}
-          </section>
-        )}
-      </main>
+          </div>
+        </div>
+      )}
 
       {addOpen && (
         <div className="mbg" onClick={() => setAddOpen(false)}>
@@ -537,6 +548,10 @@ const STYLES = `
   .btn:disabled { opacity: .55; }
   .main { display: flex; flex-direction: column; min-width: 0; }
   .top { display: flex; align-items: center; justify-content: space-between; padding: 14px 22px; border-bottom: 1px solid #edeef2; gap: 14px; }
+  .thbtns { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+  .pubbadge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 6px 11px; border-radius: 7px; }
+  .pubbadge.pub { background: #e7f7ee; color: #12855a; }
+  .pubbadge.pend { background: #fdf1dc; color: #9a6a12; }
   .th { display: flex; align-items: center; gap: 11px; min-width: 0; }
   .thav { width: 38px; height: 38px; border-radius: 50%; flex: 0 0 38px; display: grid; place-items: center; font-size: 15px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #a78bfa, #7c5cff); overflow: hidden; }
   .tn { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
