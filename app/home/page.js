@@ -253,7 +253,7 @@ export default function App() {
       setSubmitting(false);
       return;
     }
-    setJob({ status: "error", step: "Desktop app needed", error: "Adding videos needs the VidMind desktop app — a browser can't download from YouTube." });
+    setJob({ status: "error", step: "Desktop app needed", error: "Adding videos needs the Persona desktop app — a browser can't download from YouTube." });
     setAddOpen(true);
   };
 
@@ -276,7 +276,7 @@ export default function App() {
       <SignedIn>
     <div className="shell">
       <aside className="side">
-        <div className="brand"><span className="logo"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="#fff" /></svg></span>VidMind</div>
+        <div className="brand"><span className="logo"><svg width="17" height="17" viewBox="0 0 48 48" aria-hidden><path d="M18 35 V14 h7 a7 7 0 0 1 0 14 h-7" fill="none" stroke="#fff" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" /><circle cx="30.5" cy="21" r="2.4" fill="#fff" /></svg></span><span>Pers<span style={{ color: "#7c5cff" }}>o</span>na</span></div>
 
         <div className="lbl">Personalities</div>
         <div className="psearch"><Icon name="searchic" size={14} /><input placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} /></div>

@@ -44,9 +44,9 @@ export default function Landing() {
         <nav className="nav">
           <div className="brand">
             <span className="logo">
-              <svg width="18" height="18" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="#fff" /></svg>
+              <svg width="22" height="22" viewBox="0 0 48 48" aria-hidden><path d="M18 35 V14 h7 a7 7 0 0 1 0 14 h-7" fill="none" stroke="#fff" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" /><circle cx="30.5" cy="21" r="2.4" fill="#fff" /></svg>
             </span>
-            VidMind
+            Pers<span style={{ color: "#a78bfa" }}>o</span>na
           </div>
           <div className="nav-links">
             <a href="#how">How it works</a>
@@ -62,7 +62,7 @@ export default function Landing() {
             into a chattable <span className="grad2">knowledge base</span>.
           </h1>
           <p className="sub">
-            Paste a video or channel — VidMind transcribes it, indexes it, and lets you ask
+            Paste a video or channel — Persona transcribes it, indexes it, and lets you ask
             questions in any language with cited answers. Downloads run on your own machine,
             so there are no blocks and no proxies.
           </p>
@@ -117,13 +117,13 @@ export default function Landing() {
         <section className="final">
           <h2>Ready to chat with your videos?</h2>
           <a className="dl big" href={DOWNLOAD_URL}>
-            <WinIcon /> Download VidMind for Windows
+            <WinIcon /> Download Persona for Windows
           </a>
           <div className="note">Prefer just chatting? <a href={APP_URL}>Open the web app →</a></div>
         </section>
 
         <footer className="foot">
-          <span>VidMind</span>
+          <span>Persona</span>
           <span>Built for creators & researchers · 2026</span>
         </footer>
       </div>
