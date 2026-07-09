@@ -1,8 +1,41 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { UserButton, useAuth, SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const API = process.env.NEXT_PUBLIC_API_BASE || "";
+
+// Renders an AI answer as markdown. Turns inline [1] citation markers into
+// small superscript pills so they read as references, not literal text.
+function Markdown({ text }) {
+  return (
+    <div className="md">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children }) => <p>{citeChildren(children)}</p>,
+          li: ({ children }) => <li>{citeChildren(children)}</li>,
+          a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer">{children}</a>,
+        }}
+      >
+        {text || ""}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+// Replace [1], [2][3] inside text nodes with <sup class="cite"> pills.
+function citeChildren(children) {
+  return (Array.isArray(children) ? children : [children]).map((c, i) => {
+    if (typeof c !== "string") return c;
+    const parts = c.split(/(\[\d+\])/g);
+    return parts.map((p, j) => {
+      const m = p.match(/^\[(\d+)\]$/);
+      return m ? <sup key={i + "-" + j} className="cite">{m[1]}</sup> : p;
+    });
+  });
+}
 
 function Icon({ name, size = 16 }) {
   const p = {
@@ -226,7 +259,7 @@ export default function App() {
               {msgs.map((m, i) => (
                 <div key={i} className={"msg " + m.who}>
                   <span className={"av " + m.who}>{m.who === "ai" ? <Icon name="bot" size={14} /> : <Icon name="user" size={14} />}</span>
-                  <div className="mw"><div className="bub">{m.typing ? <span className="typ"><i /><i /><i /></span> : m.text}</div>{m.refs?.length > 0 && <div className="refs">{m.refs.slice(0, 4).map((r) => <span key={r.n} className="ref">[{r.n}] {(r.source || "").slice(0, 36)}</span>)}</div>}</div>
+                  <div className="mw"><div className="bub">{m.typing ? <span className="typ"><i /><i /><i /></span> : (m.who === "ai" ? <Markdown text={m.text} /> : m.text)}</div>{m.refs?.length > 0 && <div className="refs">{m.refs.slice(0, 4).map((r) => <span key={r.n} className="ref">[{r.n}] {(r.source || "").slice(0, 36)}</span>)}</div>}</div>
                 </div>
               ))}
               <div ref={end} />
@@ -411,6 +444,18 @@ const STYLES = `
   .msg.user .bub { background: #7c5cff; color: #fff; border-top-right-radius: 3px; }
   .refs { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
   .ref { font-size: 11px; color: #6b7180; background: #f4f5f8; border: 1px solid #ebedf1; border-radius: 5px; padding: 2px 7px; }
+  :global(.md) { white-space: normal; }
+  :global(.md > :first-child) { margin-top: 0; }
+  :global(.md > :last-child) { margin-bottom: 0; }
+  :global(.md p) { margin: 0 0 8px; line-height: 1.6; }
+  :global(.md ul), :global(.md ol) { margin: 0 0 8px; padding-left: 18px; }
+  :global(.md li) { margin: 3px 0; line-height: 1.55; }
+  :global(.md li::marker) { color: #a9adba; }
+  :global(.md strong) { font-weight: 600; color: #1c2030; }
+  :global(.md h2), :global(.md h3) { font-size: 13.5px; font-weight: 600; margin: 12px 0 6px; }
+  :global(.md code) { background: #eceef3; border-radius: 4px; padding: 1px 5px; font-size: 12px; }
+  :global(.md a) { color: #7c5cff; text-decoration: underline; }
+  :global(.md .cite) { display: inline-block; font-size: 9.5px; font-weight: 600; color: #7c5cff; background: #efeaff; border-radius: 4px; padding: 0 4px; margin: 0 1px; vertical-align: top; line-height: 1.5; }
   .typ { display: inline-flex; gap: 3px; } .typ i { width: 5px; height: 5px; border-radius: 50%; background: #b3b8c4; animation: bl 1s infinite; }
   .typ i:nth-child(2) { animation-delay: .2s; } .typ i:nth-child(3) { animation-delay: .4s; }
   @keyframes bl { 0%,100% { opacity: .3 } 50% { opacity: 1 } }
