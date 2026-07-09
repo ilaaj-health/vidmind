@@ -59,6 +59,9 @@ export default function App() {
   const [pOpen, setPOpen] = useState(false);
   const [pForm, setPForm] = useState({ name: "", image_url: "", persona: "", status: "alive" });
   const [search, setSearch] = useState("");
+  const [topupOpen, setTopupOpen] = useState(false);
+  const [topupBusy, setTopupBusy] = useState(false);
+  const [custom, setCustom] = useState("");
   const [url, setUrl] = useState("");
   const [est, setEst] = useState(null);
   const [job, setJob] = useState(null);
@@ -87,6 +90,25 @@ export default function App() {
   const loadVideos = async (sid) => { const r = await apiGet(`/api/spaces/${sid}/videos`).catch(() => ({})); setVideos(r.videos || []); };
 
   useEffect(() => { loadSpaces(); loadWallet(); }, []);
+  // Returning from Stripe Checkout: credit the wallet (idempotent) + clean the URL.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("topup") === "ok" && p.get("sid")) {
+      (async () => {
+        const r = await apiGet(`/api/stripe/confirm?sid=${p.get("sid")}`).catch(() => ({}));
+        if (r.balance_pkr != null) setWallet(r.balance_pkr);
+        window.history.replaceState({}, "", "/home");
+      })();
+    }
+  }, []);
+
+  const startTopup = async (amount) => {
+    if (!amount || amount < 50) return;
+    setTopupBusy(true);
+    const r = await apiPost("/api/stripe/checkout", { amount_pkr: Number(amount) });
+    if (r.url) window.location.href = r.url;
+    else { setTopupBusy(false); alert(r.error || "Top-up failed"); }
+  };
   useEffect(() => {
     const el = typeof window !== "undefined" ? window.electronAPI : null;
     if (el?.onProgress) el.onProgress((d) => setJob((j) => ({ ...(j || {}), status: "running", step: d.step, progress: d.pct })));
@@ -183,7 +205,7 @@ export default function App() {
         </nav>
 
         <div className="foot">
-          <div className="wal"><Icon name="wallet" size={14} /><span>{wallet == null ? "Rs —" : `Rs ${Number(wallet).toLocaleString()}`}</span><button className="tu">Top up</button></div>
+          <div className="wal"><Icon name="wallet" size={14} /><span>{wallet == null ? "Rs —" : `Rs ${Number(wallet).toLocaleString()}`}</span><button className="tu" onClick={() => setTopupOpen(true)}>Top up</button></div>
           <div className="ur"><UserButton afterSignOutUrl="/" /><span>Account</span></div>
         </div>
       </aside>
@@ -284,6 +306,25 @@ export default function App() {
         </div>
       )}
 
+      {topupOpen && (
+        <div className="mbg" onClick={() => setTopupOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="mh"><b>Add funds</b><button className="x" onClick={() => setTopupOpen(false)}><Icon name="close" size={17} /></button></div>
+            <div className="puhint" style={{ marginBottom: 12 }}>Balance: <b style={{ color: "#1f2430" }}>Rs {wallet == null ? "—" : Number(wallet).toLocaleString()}</b></div>
+            <div className="amts">
+              {[200, 500, 1000, 2000].map((a) => (
+                <button key={a} className="amt" disabled={topupBusy} onClick={() => startTopup(a)}>Rs {a.toLocaleString()}</button>
+              ))}
+            </div>
+            <div className="mrow">
+              <input className="in big" type="number" placeholder="Custom (PKR)" value={custom} onChange={(e) => setCustom(e.target.value)} style={{ flex: 1 }} />
+              <button className="btn" disabled={topupBusy || !custom} onClick={() => startTopup(custom)}>{topupBusy ? "…" : "Pay"}</button>
+            </div>
+            <div className="puhint" style={{ marginTop: 10 }}>Secure payment via Stripe · test mode</div>
+          </div>
+        </div>
+      )}
+
       <style jsx>{STYLES}</style>
     </div>
       </SignedIn>
@@ -323,6 +364,10 @@ const STYLES = `
   .pupload span { display: block; margin-top: 1px; }
   .pufields { flex: 1; min-width: 0; }
   .puhint { font-size: 11px; color: #9aa0ac; margin-top: 5px; }
+  .amts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .amt { border: 1px solid #e2e4ea; background: #fff; border-radius: 9px; padding: 13px 4px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; color: #1f2430; }
+  .amt:hover { border-color: #7c5cff; color: #5b3df5; background: #faf9ff; }
+  .amt:disabled { opacity: .5; }
   .seg { display: flex; background: #f0f1f5; border-radius: 6px; padding: 2px; }
   .seg button { flex: 1; border: 0; background: transparent; padding: 5px; font: inherit; font-size: 12px; border-radius: 5px; cursor: pointer; color: #6b7180; }
   .seg button.on { background: #fff; color: #5b3df5; box-shadow: 0 1px 2px rgba(0,0,0,.06); font-weight: 600; }
