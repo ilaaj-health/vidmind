@@ -6,7 +6,7 @@ const Hero3D = dynamic(() => import("./components/Hero3D"), { ssr: false });
 // The desktop installer, hosted on the vidmind repo's GitHub Release (repo is public).
 const DOWNLOAD_URL =
   "https://github.com/ilaaj-health/vidmind/releases/download/v0.1.0/VidMind-win32-x64.zip";
-const APP_URL = "/app";
+const APP_URL = "/home";
 
 function WinIcon() {
   return (

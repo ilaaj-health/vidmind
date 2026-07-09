@@ -8,4 +8,8 @@ module.exports = {
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${BACKEND}/api/:path*` }];
   },
+  // /app was renamed to /home (Vercel cached /app as a 404). Redirect old links.
+  async redirects() {
+    return [{ source: "/app", destination: "/home", permanent: false }];
+  },
 };

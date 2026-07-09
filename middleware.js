@@ -5,8 +5,8 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 const PUB_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
   "pk_test_Zml0dGluZy1yb2Jpbi03NS5jbGVyay5hY2NvdW50cy5kZXYk";
 
-// Only /app (the actual product) needs login. The landing page (/) stays public.
-const isProtected = createRouteMatcher(["/app(.*)"]);
+// Only /home (the actual product) needs login. The landing page (/) stays public.
+const isProtected = createRouteMatcher(["/home(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtected(req)) await auth.protect();
@@ -15,5 +15,5 @@ export default clerkMiddleware(async (auth, req) => {
 export const config = {
   // Only the authed routes run Clerk middleware. The landing page (/) is never matched,
   // so it stays up regardless of Clerk configuration.
-  matcher: ["/app", "/app/:path*", "/sign-in/:path*", "/sign-up/:path*"],
+  matcher: ["/home", "/home/:path*", "/sign-in/:path*", "/sign-up/:path*"],
 };
