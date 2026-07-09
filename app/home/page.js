@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { UserButton, useAuth, SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
+import { UserButton, useAuth, useUser, SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -57,6 +57,8 @@ function Icon({ name, size = 16 }) {
     refresh: <><path d="M20 11a8 8 0 1 0-.7 4.5" /><path d="M20 5v6h-6" /></>,
     clock: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></>,
     link: <><path d="M9.5 14.5l5-5" /><path d="M11 6.5l1-1a3.5 3.5 0 0 1 5 5l-2 2" /><path d="M13 17.5l-1 1a3.5 3.5 0 0 1-5-5l2-2" /></>,
+    trash: <><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 12.5h9l1-12.5M10 10.5v6M14 10.5v6" /></>,
+    eye: <><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="3" /></>,
   }[name] || null;
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{p}</svg>;
@@ -86,6 +88,7 @@ function timeAgo(iso) {
 
 export default function App() {
   const { getToken } = useAuth();
+  const { user, isLoaded } = useUser();
   const [spaces, setSpaces] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [wallet, setWallet] = useState(null);
@@ -94,6 +97,8 @@ export default function App() {
   const [addOpen, setAddOpen] = useState(false);
   const [pOpen, setPOpen] = useState(false);
   const [pForm, setPForm] = useState({ name: "", image_url: "", persona: "", status: "alive" });
+  const [creating, setCreating] = useState(false);
+  const [cm, setCm] = useState(null);            // chunk modal: { video, chunks, busyId }
   const [search, setSearch] = useState("");
   const [topupOpen, setTopupOpen] = useState(false);
   const [topupBusy, setTopupBusy] = useState(false);
@@ -118,14 +123,21 @@ export default function App() {
 
   const active = spaces.find((s) => s.id === activeId);
 
+  const apiDelete = async (p) => (await fetch(API + p, { method: "DELETE", headers: await headers() })).json();
+
+  // Name the auto-created default personality after the signed-in user.
+  const displayName = () => {
+    const e = user?.primaryEmailAddress?.emailAddress || "";
+    return (user?.firstName || user?.username || user?.fullName || e.split("@")[0] || "").trim();
+  };
   const loadSpaces = async () => {
-    const r = await apiGet("/api/spaces").catch(() => ({}));
+    const r = await apiGet(`/api/spaces?name=${encodeURIComponent(displayName())}`).catch(() => ({}));
     if (r.spaces) { setSpaces(r.spaces); setActiveId((id) => id || r.spaces[0]?.id || null); }
   };
   const loadWallet = async () => { const r = await apiGet("/api/wallet").catch(() => ({})); if (r.balance_pkr != null) setWallet(r.balance_pkr); };
   const loadVideos = async (sid) => { const r = await apiGet(`/api/spaces/${sid}/videos`).catch(() => ({})); setVideos(r.videos || []); };
 
-  useEffect(() => { loadSpaces(); loadWallet(); }, []);
+  useEffect(() => { if (isLoaded) { loadSpaces(); loadWallet(); } }, [isLoaded]);
   // Returning from Stripe Checkout: credit the wallet (idempotent) + clean the URL.
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
@@ -154,10 +166,47 @@ export default function App() {
 
   const createPersonality = async () => {
     const name = (pForm.name || "").trim();
-    if (!name) return;
-    const s = await apiPost("/api/spaces", { name, persona: pForm.persona || null, image_url: pForm.image_url || null, status: pForm.status });
-    if (s.id) { setSpaces((x) => [...x, s]); setActiveId(s.id); }
-    setPForm({ name: "", image_url: "", persona: "", status: "alive" }); setPOpen(false);
+    if (!name || creating) return;                 // guard: block double-submit
+    setCreating(true);
+    try {
+      const s = await apiPost("/api/spaces", { name, persona: pForm.persona || null, image_url: pForm.image_url || null, status: pForm.status });
+      if (s.id) { setSpaces((x) => [...x, s]); setActiveId(s.id); }
+      setPForm({ name: "", image_url: "", persona: "", status: "alive" }); setPOpen(false);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const deletePersonality = async (s) => {
+    if (!confirm(`Delete personality "${s.name}"? Iske saare videos aur knowledge hamesha ke liye hat jayenge.`)) return;
+    await apiDelete(`/api/spaces/${s.id}`).catch(() => ({}));
+    setSpaces((x) => {
+      const rest = x.filter((p) => p.id !== s.id);
+      if (activeId === s.id) setActiveId(rest[0]?.id || null);
+      return rest;
+    });
+  };
+
+  // Chunk viewer/editor for one video.
+  const openChunks = async (v) => {
+    setCm({ video: v, chunks: null });
+    const r = await apiGet(`/api/spaces/${activeId}/videos/${v.yt_id}/chunks`).catch(() => ({}));
+    setCm({ video: v, chunks: r.chunks || [] });
+  };
+  const editChunkText = (id, text) =>
+    setCm((c) => ({ ...c, chunks: c.chunks.map((k) => (k.id === id ? { ...k, text, dirty: true } : k)) }));
+  const saveChunk = async (v, k) => {
+    setCm((c) => ({ ...c, busyId: k.id }));
+    await apiPost("/api/chunks/reembed", { point_id: k.id, text: k.text });
+    const r = await apiGet(`/api/spaces/${activeId}/videos/${v.yt_id}/chunks`).catch(() => ({}));
+    setCm((c) => ({ ...c, chunks: r.chunks || [], busyId: null }));
+  };
+  const deleteChunk = async (v, k) => {
+    if (!confirm("Is chunk ko delete karein?")) return;
+    setCm((c) => ({ ...c, busyId: k.id }));
+    await apiPost("/api/chunks/delete", { point_id: k.id, space_id: activeId, yt_id: v.yt_id });
+    setCm((c) => ({ ...c, chunks: c.chunks.filter((x) => x.id !== k.id), busyId: null }));
+    loadVideos(activeId);
   };
 
   // Read an image file, resize to a 140px square, store as a compact data URL (no upload server).
@@ -226,10 +275,11 @@ export default function App() {
         <div className="psearch"><Icon name="searchic" size={14} /><input placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
         <div className="plist">
           {spaces.filter((s) => s.name.toLowerCase().includes(search.toLowerCase())).map((s) => (
-            <button key={s.id} className={"prow " + (s.id === activeId ? "on" : "")} onClick={() => setActiveId(s.id)}>
+            <div key={s.id} className={"prow " + (s.id === activeId ? "on" : "")} onClick={() => setActiveId(s.id)} role="button" tabIndex={0}>
               <span className="pav">{s.image_url ? <img src={s.image_url} alt="" /> : initial(s)}</span>
               <span className="pinfo"><span className="pn">{s.name}</span><span className="pm">{s.status === "deceased" ? "In memory" : "Alive"} · {s.videos} videos</span></span>
-            </button>
+              <span className="pdel" title="Delete personality" onClick={(e) => { e.stopPropagation(); deletePersonality(s); }}><Icon name="trash" size={14} /></span>
+            </div>
           ))}
           <button className="prow add" onClick={() => setPOpen(true)}><Icon name="plus" size={14} /> New personality</button>
         </div>
@@ -275,15 +325,24 @@ export default function App() {
             {videos.length === 0 ? (
               <div className="empty"><Icon name="video" size={30} /><div className="et" style={{ marginTop: 12 }}>No videos yet</div><div className="es">Add a YouTube video to this personality.</div><button className="btn" style={{ marginTop: 16 }} onClick={() => { setJob(null); setAddOpen(true); }}><Icon name="plus" size={15} /> Add video</button></div>
             ) : (
-              <div className="vlist">
-                {videos.map((v) => (
-                  <div key={v.id} className="vrow">
-                    <span className="vth"><Icon name="video" size={16} /></span>
-                    <div className="vi"><div className="vt">{v.title}</div><div className="vm"><Icon name="clock" size={12} /> {timeAgo(v.created_at)} · {v.chunks} chunks</div></div>
-                    {v.url && <a className="vlk" href={v.url} target="_blank" rel="noreferrer" title="Open source"><Icon name="link" size={15} /></a>}
-                    <button className="vre" title="Re-process (fix alignment)" onClick={() => process(v.url, true)}><Icon name="refresh" size={15} /></button>
-                  </div>
-                ))}
+              <div className="vtblwrap">
+                <table className="vtbl">
+                  <thead><tr><th>Video</th><th>Added</th><th>Chunks</th><th className="ta-r">Actions</th></tr></thead>
+                  <tbody>
+                    {videos.map((v) => (
+                      <tr key={v.id}>
+                        <td><div className="vtc"><span className="vth"><Icon name="video" size={15} /></span><span className="vt">{v.title}</span></div></td>
+                        <td className="mut">{timeAgo(v.created_at)}</td>
+                        <td className="mut">{v.chunks}</td>
+                        <td className="ta-r"><div className="vact">
+                          <button className="vbtn" onClick={() => openChunks(v)}><Icon name="eye" size={14} /> View</button>
+                          {v.url && <a className="vico" href={v.url} target="_blank" rel="noreferrer" title="Open source"><Icon name="link" size={15} /></a>}
+                          <button className="vico" title="Re-process whole video" onClick={() => process(v.url, true)}><Icon name="refresh" size={15} /></button>
+                        </div></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </section>
@@ -318,6 +377,32 @@ export default function App() {
         </div>
       )}
 
+      {cm && (
+        <div className="mbg" onClick={() => setCm(null)}>
+          <div className="modal wide" onClick={(e) => e.stopPropagation()}>
+            <div className="mh"><b>Chunks · {cm.video.title}</b><button className="x" onClick={() => setCm(null)}><Icon name="close" size={17} /></button></div>
+            {cm.chunks == null ? (
+              <div className="mest mut">Loading chunks…</div>
+            ) : cm.chunks.length === 0 ? (
+              <div className="mest mut">Is video ke koi chunks nahi mile.</div>
+            ) : (
+              <div className="clist">
+                {cm.chunks.map((k) => (
+                  <div key={k.id} className="citem">
+                    <div className="cidx">#{(k.idx ?? 0) + 1}</div>
+                    <textarea className="cta" value={k.text} onChange={(e) => editChunkText(k.id, e.target.value)} />
+                    <div className="cact">
+                      <button className="vbtn" disabled={cm.busyId === k.id || !k.dirty} onClick={() => saveChunk(cm.video, k)}>{cm.busyId === k.id ? "Saving…" : "Save + re-embed"}</button>
+                      <button className="vico danger" title="Delete chunk" disabled={cm.busyId === k.id} onClick={() => deleteChunk(cm.video, k)}><Icon name="trash" size={15} /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {pOpen && (
         <div className="mbg" onClick={() => setPOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -337,7 +422,7 @@ export default function App() {
               <button className={pForm.status === "alive" ? "on" : ""} onClick={() => setPForm({ ...pForm, status: "alive" })}>Alive</button>
               <button className={pForm.status === "deceased" ? "on" : ""} onClick={() => setPForm({ ...pForm, status: "deceased" })}>Deceased</button>
             </div>
-            <div className="mrow"><button className="btn ghost" onClick={() => setPOpen(false)}>Cancel</button><button className="btn" onClick={createPersonality}>Create personality</button></div>
+            <div className="mrow"><button className="btn ghost" onClick={() => setPOpen(false)}>Cancel</button><button className="btn" onClick={createPersonality} disabled={creating}>{creating ? "Creating…" : "Create personality"}</button></div>
           </div>
         </div>
       )}
@@ -387,6 +472,34 @@ const STYLES = `
   .pm { font-size: 11px; color: #9aa0ac; }
   .prow.add { color: #8b90a0; font-size: 12.5px; }
   .prow.add:hover { color: #7c5cff; }
+  .pinfo { flex: 1; }
+  .pdel { opacity: 0; flex: 0 0 auto; width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; color: #b0b4be; cursor: pointer; }
+  .prow:hover .pdel { opacity: 1; }
+  .pdel:hover { background: #fdecec; color: #e5484d; }
+  .vtblwrap { border: 1px solid #edeef2; border-radius: 12px; overflow: hidden; }
+  .vtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .vtbl th { text-align: left; font-weight: 600; color: #8b90a0; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; padding: 10px 14px; background: #fafafb; border-bottom: 1px solid #edeef2; }
+  .vtbl td { padding: 11px 14px; border-bottom: 1px solid #f1f2f5; vertical-align: middle; }
+  .vtbl tr:last-child td { border-bottom: 0; }
+  .vtbl .ta-r { text-align: right; }
+  .vtbl .mut { color: #8b90a0; }
+  .vtc { display: flex; align-items: center; gap: 10px; }
+  .vth { width: 30px; height: 30px; border-radius: 7px; background: #efeaff; color: #7c5cff; display: grid; place-items: center; flex: 0 0 30px; }
+  .vt { font-weight: 500; color: #1f2430; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 340px; }
+  .vact { display: inline-flex; gap: 7px; align-items: center; justify-content: flex-end; }
+  .vbtn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #d3c9ff; background: #f6f3ff; color: #6a49f2; border-radius: 7px; padding: 6px 11px; font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer; }
+  .vbtn:hover { background: #efeaff; }
+  .vbtn:disabled { opacity: .5; cursor: default; }
+  .vico { width: 30px; height: 30px; border-radius: 7px; border: 1px solid #e8e9ee; background: #fff; color: #6b7180; display: grid; place-items: center; cursor: pointer; text-decoration: none; }
+  .vico:hover { color: #7c5cff; border-color: #d3c9ff; }
+  .vico.danger:hover { color: #e5484d; border-color: #f3b7b7; background: #fdecec; }
+  .modal.wide { max-width: 640px; max-height: 80vh; display: flex; flex-direction: column; }
+  .clist { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-top: 8px; padding-right: 4px; }
+  .citem { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: start; }
+  .cidx { font-size: 11px; color: #9aa0ac; font-weight: 600; padding-top: 9px; }
+  .cta { width: 100%; min-height: 58px; resize: vertical; border: 1px solid #e2e4ea; border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 12.5px; line-height: 1.5; color: #2b2f3a; }
+  .cta:focus { outline: none; border-color: #7c5cff; box-shadow: 0 0 0 2px rgba(124,92,255,.12); }
+  .cact { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
   .npbox { padding: 8px; background: #fff; border: 1px solid #e8e9ee; border-radius: 8px; margin: 4px 0; display: flex; flex-direction: column; gap: 6px; }
   .in { width: 100%; background: #fff; border: 1px solid #e2e4ea; border-radius: 6px; padding: 7px 9px; font: inherit; font-size: 12.5px; color: #1f2430; }
   .in:focus { outline: none; border-color: #7c5cff; box-shadow: 0 0 0 2px rgba(124,92,255,.12); }
