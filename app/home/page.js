@@ -16,6 +16,8 @@ function Icon({ name, size = 16 }) {
     wallet: <><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10h18M16 14.5h2.5" /></>,
     send: <path d="M4.5 11.5l15-7-6.5 15-2.8-5.7z" />,
     close: <path d="M6 6l12 12M18 6L6 18" />,
+    camera: <><rect x="3.5" y="7" width="17" height="12" rx="2.5" /><circle cx="12" cy="13" r="3" /><path d="M8.5 7l1.2-2h4.6l1.2 2" /></>,
+    searchic: <><circle cx="11" cy="11" r="6.5" /><path d="M20 20l-4-4" /></>,
     refresh: <><path d="M20 11a8 8 0 1 0-.7 4.5" /><path d="M20 5v6h-6" /></>,
     clock: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></>,
     link: <><path d="M9.5 14.5l5-5" /><path d="M11 6.5l1-1a3.5 3.5 0 0 1 5 5l-2 2" /><path d="M13 17.5l-1 1a3.5 3.5 0 0 1-5-5l2-2" /></>,
@@ -54,7 +56,9 @@ export default function App() {
   const [view, setView] = useState("chat");
   const [videos, setVideos] = useState([]);
   const [addOpen, setAddOpen] = useState(false);
-  const [newP, setNewP] = useState(null);
+  const [pOpen, setPOpen] = useState(false);
+  const [pForm, setPForm] = useState({ name: "", image_url: "", persona: "", status: "alive" });
+  const [search, setSearch] = useState("");
   const [url, setUrl] = useState("");
   const [est, setEst] = useState(null);
   const [job, setJob] = useState(null);
@@ -91,11 +95,29 @@ export default function App() {
   useEffect(() => { setMsgs([]); if (activeId) loadVideos(activeId); }, [activeId]);
 
   const createPersonality = async () => {
-    const name = (newP?.name || "").trim();
+    const name = (pForm.name || "").trim();
     if (!name) return;
-    const s = await apiPost("/api/spaces", { name, persona: newP.persona || null, image_url: newP.image_url || null, status: newP.status || "alive" });
+    const s = await apiPost("/api/spaces", { name, persona: pForm.persona || null, image_url: pForm.image_url || null, status: pForm.status });
     if (s.id) { setSpaces((x) => [...x, s]); setActiveId(s.id); }
-    setNewP(null);
+    setPForm({ name: "", image_url: "", persona: "", status: "alive" }); setPOpen(false);
+  };
+
+  // Read an image file, resize to a 140px square, store as a compact data URL (no upload server).
+  const pickImage = (file) => {
+    if (!file) return;
+    const rd = new FileReader();
+    rd.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const S = 140, c = document.createElement("canvas"); c.width = c.height = S;
+        const ctx = c.getContext("2d");
+        const sc = Math.max(S / img.width, S / img.height), w = img.width * sc, h = img.height * sc;
+        ctx.drawImage(img, (S - w) / 2, (S - h) / 2, w, h);
+        setPForm((f) => ({ ...f, image_url: c.toDataURL("image/jpeg", 0.82) }));
+      };
+      img.src = e.target.result;
+    };
+    rd.readAsDataURL(file);
   };
 
   const estimate = async () => { if (!url.trim()) return; setEst({ loading: true }); setEst(await apiPost("/api/estimate", { url })); };
@@ -143,27 +165,15 @@ export default function App() {
         <div className="brand"><span className="logo"><svg width="15" height="15" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="#fff" /></svg></span>VidMind</div>
 
         <div className="lbl">Personalities</div>
+        <div className="psearch"><Icon name="searchic" size={14} /><input placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
         <div className="plist">
-          {spaces.map((s) => (
+          {spaces.filter((s) => s.name.toLowerCase().includes(search.toLowerCase())).map((s) => (
             <button key={s.id} className={"prow " + (s.id === activeId ? "on" : "")} onClick={() => setActiveId(s.id)}>
               <span className="pav">{s.image_url ? <img src={s.image_url} alt="" /> : initial(s)}</span>
               <span className="pinfo"><span className="pn">{s.name}</span><span className="pm">{s.status === "deceased" ? "In memory" : "Alive"} · {s.videos} videos</span></span>
             </button>
           ))}
-          {newP ? (
-            <div className="npbox">
-              <input autoFocus className="in" placeholder="Name (e.g. Sahil Adeem)" value={newP.name} onChange={(e) => setNewP({ ...newP, name: e.target.value })} onKeyDown={(e) => e.key === "Enter" && createPersonality()} />
-              <input className="in" placeholder="Image URL (optional)" value={newP.image_url} onChange={(e) => setNewP({ ...newP, image_url: e.target.value })} />
-              <input className="in" placeholder="Persona / tone (optional)" value={newP.persona} onChange={(e) => setNewP({ ...newP, persona: e.target.value })} />
-              <div className="seg">
-                <button className={newP.status === "alive" ? "on" : ""} onClick={() => setNewP({ ...newP, status: "alive" })}>Alive</button>
-                <button className={newP.status === "deceased" ? "on" : ""} onClick={() => setNewP({ ...newP, status: "deceased" })}>Deceased</button>
-              </div>
-              <div className="nprow"><button className="btn sm" onClick={createPersonality}>Create</button><button className="btn sm ghost" onClick={() => setNewP(null)}>Cancel</button></div>
-            </div>
-          ) : (
-            <button className="prow add" onClick={() => setNewP({ name: "", image_url: "", persona: "", status: "alive" })}><Icon name="plus" size={14} /> New personality</button>
-          )}
+          <button className="prow add" onClick={() => setPOpen(true)}><Icon name="plus" size={14} /> New personality</button>
         </div>
 
         <div className="lbl">View</div>
@@ -250,6 +260,30 @@ export default function App() {
         </div>
       )}
 
+      {pOpen && (
+        <div className="mbg" onClick={() => setPOpen(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="mh"><b>New personality</b><button className="x" onClick={() => setPOpen(false)}><Icon name="close" size={17} /></button></div>
+            <div className="pup">
+              <label className="pupload" title="Upload photo">
+                {pForm.image_url ? <img src={pForm.image_url} alt="" /> : <><Icon name="camera" size={19} /><span>Photo</span></>}
+                <input type="file" accept="image/*" hidden onChange={(e) => pickImage(e.target.files?.[0])} />
+              </label>
+              <div className="pufields">
+                <input autoFocus className="in big" placeholder="Name (e.g. Sahil Adeem)" value={pForm.name} onChange={(e) => setPForm({ ...pForm, name: e.target.value })} onKeyDown={(e) => e.key === "Enter" && createPersonality()} />
+                <div className="puhint">Tap the circle to upload a photo (optional)</div>
+              </div>
+            </div>
+            <input className="in big" style={{ marginTop: 10 }} placeholder="Persona / tone (optional, e.g. Warm scholar)" value={pForm.persona} onChange={(e) => setPForm({ ...pForm, persona: e.target.value })} />
+            <div className="seg" style={{ marginTop: 10 }}>
+              <button className={pForm.status === "alive" ? "on" : ""} onClick={() => setPForm({ ...pForm, status: "alive" })}>Alive</button>
+              <button className={pForm.status === "deceased" ? "on" : ""} onClick={() => setPForm({ ...pForm, status: "deceased" })}>Deceased</button>
+            </div>
+            <div className="mrow"><button className="btn ghost" onClick={() => setPOpen(false)}>Cancel</button><button className="btn" onClick={createPersonality}>Create personality</button></div>
+          </div>
+        </div>
+      )}
+
       <style jsx>{STYLES}</style>
     </div>
       </SignedIn>
@@ -280,6 +314,15 @@ const STYLES = `
   .in { width: 100%; background: #fff; border: 1px solid #e2e4ea; border-radius: 6px; padding: 7px 9px; font: inherit; font-size: 12.5px; color: #1f2430; }
   .in:focus { outline: none; border-color: #7c5cff; box-shadow: 0 0 0 2px rgba(124,92,255,.12); }
   .in.big { font-size: 13.5px; padding: 9px 11px; }
+  .psearch { display: flex; align-items: center; gap: 7px; margin: 0 2px 6px; padding: 6px 9px; background: #fff; border: 1px solid #e8e9ee; border-radius: 7px; color: #9aa0ac; }
+  .psearch input { border: 0; background: transparent; outline: none; font: inherit; font-size: 12.5px; color: #1f2430; width: 100%; }
+  .pup { display: flex; gap: 13px; align-items: center; }
+  .pupload { width: 66px; height: 66px; border-radius: 50%; flex: 0 0 66px; display: grid; place-items: center; cursor: pointer; overflow: hidden; color: #8b90a0; background: #f4f5f8; border: 1px dashed #cdd1da; font-size: 9px; }
+  .pupload:hover { border-color: #7c5cff; color: #7c5cff; }
+  .pupload img { width: 100%; height: 100%; object-fit: cover; }
+  .pupload span { display: block; margin-top: 1px; }
+  .pufields { flex: 1; min-width: 0; }
+  .puhint { font-size: 11px; color: #9aa0ac; margin-top: 5px; }
   .seg { display: flex; background: #f0f1f5; border-radius: 6px; padding: 2px; }
   .seg button { flex: 1; border: 0; background: transparent; padding: 5px; font: inherit; font-size: 12px; border-radius: 5px; cursor: pointer; color: #6b7180; }
   .seg button.on { background: #fff; color: #5b3df5; box-shadow: 0 1px 2px rgba(0,0,0,.06); font-weight: 600; }
