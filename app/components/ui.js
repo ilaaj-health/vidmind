@@ -12,6 +12,30 @@ export function MatIcon({ name, className = "", fill = false }) {
   );
 }
 
+// Loading spinner for buttons: inherits currentColor, sized via className.
+export function Spinner({ className = "w-4 h-4" }) {
+  return (
+    <span
+      aria-hidden
+      className={`inline-block shrink-0 rounded-[50%] border-2 border-current border-t-transparent animate-spin ${className}`}
+    />
+  );
+}
+
+// "watch?v=..." link that lands at a chunk's timestamp.
+export function ytAt(url, start) {
+  if (!url) return null;
+  const t = Math.max(0, Math.floor(start || 0));
+  return url.includes("?") ? `${url}&t=${t}s` : `${url}?t=${t}s`;
+}
+
+export function mmss(s) {
+  s = Math.max(0, Math.floor(s || 0));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  const p = (n) => String(n).padStart(2, "0");
+  return h ? `${h}:${p(m)}:${p(sec)}` : `${m}:${p(sec)}`;
+}
+
 // Square-ish archival avatar: photo when available, serif initial otherwise.
 export function Avatar({ name, image, className = "", textClass = "text-base", grayscale = false }) {
   const initial = (name || "?").trim().charAt(0).toUpperCase();
@@ -65,7 +89,18 @@ export function AiMsg({ text, refs, typing }) {
                 <p className="font-citation text-citation text-on-surface-variant">
                   <span className="font-bold text-primary">[{r.n}]</span> "{r.source || "Untitled source"}"
                   {r.idx != null && <> — Segment: #{r.idx}</>}
+                  {r.start != null && <> · {mmss(r.start)}</>}
                 </p>
+                {r.url && r.start != null && (
+                  <a
+                    href={ytAt(r.url, r.start)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 flex items-center gap-2 text-[11px] font-bold text-primary hover:underline no-underline w-fit"
+                  >
+                    <MatIcon name="play_circle" className="text-xs" /> WATCH SEGMENT
+                  </a>
+                )}
               </div>
             ))}
           </div>
@@ -91,10 +126,10 @@ export function Composer({ value, onChange, onSend, busy, placeholder }) {
           <button
             onClick={onSend}
             disabled={busy}
-            className="p-3 bg-primary text-on-primary rounded-lg hover:opacity-90 active:scale-90 transition-all flex items-center justify-center disabled:opacity-40"
+            className="p-3 bg-primary text-on-primary rounded-lg hover:opacity-90 active:scale-90 transition-all flex items-center justify-center disabled:opacity-60"
             aria-label="Send"
           >
-            <MatIcon name="send" />
+            {busy ? <Spinner className="w-5 h-5" /> : <MatIcon name="send" />}
           </button>
         </div>
         <div className="flex justify-between items-center mt-3 px-1">
