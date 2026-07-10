@@ -52,7 +52,7 @@ export default function Explore() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
-            {list.map((p) => {
+            {list.map((p, i) => {
               const dead = p.status === "deceased";
               return (
               <div key={p.id} className="group relative bg-surface-container-lowest p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border border-outline-variant flex flex-col">
@@ -83,12 +83,21 @@ export default function Explore() {
                 <p className="font-body-md text-body-md text-secondary mb-8 line-clamp-2 flex-1">
                   {p.persona || "Chat with this personality's videos — cited answers in any language."}
                 </p>
-                <Link
-                  href={`/explore/${p.id}`}
-                  className="w-full bg-primary text-on-primary font-bold py-4 rounded-lg flex justify-center items-center gap-2 hover:opacity-90 active:scale-[0.99] transition-all no-underline"
-                >
-                  Chat Now <MatIcon name="arrow_forward" />
-                </Link>
+                {i === 0 ? (
+                  <Link
+                    href={`/explore/${p.id}`}
+                    className="w-full bg-primary text-on-primary font-bold py-4 rounded-lg flex justify-center items-center gap-2 hover:opacity-90 active:scale-[0.99] transition-all no-underline"
+                  >
+                    Chat Now <MatIcon name="arrow_forward" />
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/explore/${p.id}`}
+                    className="w-full border border-primary text-primary font-bold py-4 rounded-lg flex justify-center items-center gap-2 hover:bg-primary hover:text-on-primary active:scale-[0.99] transition-all no-underline"
+                  >
+                    Summon Wisdom <MatIcon name="auto_awesome" />
+                  </Link>
+                )}
               </div>
               );
             })}

@@ -111,13 +111,25 @@ export function AiMsg({ text, refs, typing }) {
 }
 
 // Composer: bordered white box with black send button + scholarly meta row.
-export function Composer({ value, onChange, onSend, busy, placeholder }) {
+// Optional real controls (used in the workspace): onAttach opens the ingest flow,
+// depth cycles the retrieval top-k, citations toggles the citation sections.
+export function Composer({ value, onChange, onSend, busy, placeholder, onAttach, depth, citations }) {
   return (
     <div className="p-6 md:p-8 bg-surface-container-lowest border-t border-outline-variant">
       <div className="max-w-[800px] mx-auto">
-        <div className="flex items-center gap-4 p-3 pl-5 bg-white border border-outline-variant shadow-sm focus-within:ring-1 focus-within:ring-primary transition-all">
+        <div className="flex items-center gap-2 p-3 pl-3 bg-white border border-outline-variant shadow-sm focus-within:ring-1 focus-within:ring-primary transition-all">
+          {onAttach && (
+            <button
+              className="p-2 text-on-surface-variant hover:text-primary transition-colors"
+              onClick={onAttach}
+              title="Ingest a new source"
+              aria-label="Add source"
+            >
+              <MatIcon name="attach_file" />
+            </button>
+          )}
           <input
-            className="flex-1 border-none outline-none focus:ring-0 py-2 font-body-lg text-body-lg bg-transparent placeholder:text-on-surface-variant/60"
+            className="flex-1 border-none outline-none focus:ring-0 py-2 pl-2 font-body-lg text-body-lg bg-transparent placeholder:text-on-surface-variant/60"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && onSend()}
@@ -134,12 +146,32 @@ export function Composer({ value, onChange, onSend, busy, placeholder }) {
         </div>
         <div className="flex justify-between items-center mt-3 px-1">
           <div className="flex gap-4">
-            <span className="text-citation font-mono-label text-on-surface-variant flex items-center gap-1 uppercase tracking-widest">
-              <MatIcon name="link" className="text-[14px]" /> Citation Mode
-            </span>
-            <span className="hidden sm:flex text-citation font-mono-label text-on-surface-variant items-center gap-1 uppercase tracking-widest">
-              <MatIcon name="translate" className="text-[14px]" /> Any Language
-            </span>
+            {depth ? (
+              <button
+                className="text-citation font-mono-label text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 uppercase tracking-widest"
+                onClick={() => depth.onChange(depth.value >= 12 ? 4 : depth.value + 4)}
+                title="Retrieval depth: how many archive segments are consulted per answer"
+              >
+                <MatIcon name="psychology" className="text-[14px]" /> Depth: {depth.value}
+              </button>
+            ) : (
+              <span className="hidden sm:flex text-citation font-mono-label text-on-surface-variant items-center gap-1 uppercase tracking-widest">
+                <MatIcon name="translate" className="text-[14px]" /> Any Language
+              </span>
+            )}
+            {citations ? (
+              <button
+                className={`text-citation font-mono-label transition-colors flex items-center gap-1 uppercase tracking-widest ${citations.value ? "text-primary" : "text-on-surface-variant hover:text-primary"}`}
+                onClick={() => citations.onChange(!citations.value)}
+                title="Show or hide the Archive Citations under answers"
+              >
+                <MatIcon name="link" className="text-[14px]" /> Citation Mode {citations.value ? "· On" : "· Off"}
+              </button>
+            ) : (
+              <span className="text-citation font-mono-label text-on-surface-variant flex items-center gap-1 uppercase tracking-widest">
+                <MatIcon name="link" className="text-[14px]" /> Citation Mode
+              </span>
+            )}
           </div>
           <p className="text-[10px] text-on-surface-variant italic hidden md:block">
             Persona AI uses synthesized archive data for scholarly reference.

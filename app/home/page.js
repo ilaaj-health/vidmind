@@ -90,6 +90,19 @@ export default function App() {
   const [topupBusy, setTopupBusy] = useState(false);
   const [amount, setAmount] = useState(500);
   const [custom, setCustom] = useState("");
+  const [tx, setTx] = useState(null);              // wallet ledger (null = loading)
+
+  // chunk tools
+  const [addChunkOpen, setAddChunkOpen] = useState(false);
+  const [addChunkText, setAddChunkText] = useState("");
+  const [addChunkBusy, setAddChunkBusy] = useState(false);
+  const [fixBusy, setFixBusy] = useState(null);    // chunk id being auto-corrected
+  const [bulkProg, setBulkProg] = useState(null);  // {done, total} during confirm-all
+
+  // chat controls (design: Depth + Citation Mode)
+  const [depth, setDepth] = useState(8);
+  const [citeMode, setCiteMode] = useState(true);
+  const [kbStatus, setKbStatus] = useState("all"); // all | archived | processing
 
   // ingest / processing
   const [url, setUrl] = useState("");
@@ -150,6 +163,32 @@ export default function App() {
     const r = await apiPost("/api/stripe/checkout", { amount_pkr: Number(amt) });
     if (r.url) window.location.href = r.url;
     else { setTopupBusy(false); alert(r.error || "Top-up failed"); }
+  };
+
+  // Wallet ledger — refresh whenever the wallet page opens.
+  useEffect(() => {
+    if (view !== "wallet") return;
+    setTx(null);
+    apiGet("/api/wallet/transactions").then((r) => setTx(r.transactions || [])).catch(() => setTx([]));
+  }, [view]);
+
+  const txLabel = (t) =>
+    t.kind === "topup" ? "Wallet Top-up via Stripe"
+      : t.kind === "video" ? `Video ingest${t.detail ? ` · ${t.detail.replace("video:", "")}` : ""}`
+        : t.kind === "chat" ? "Persona chat session"
+          : t.detail || t.kind;
+
+  const downloadLedger = () => {
+    const rows = [["date", "description", "type", "amount_pkr", "balance_after"]];
+    for (const t of tx || []) {
+      rows.push([t.created_at, txLabel(t), t.amount_pkr >= 0 ? "credit" : "debit", t.amount_pkr, t.balance_after]);
+    }
+    const csv = rows.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = "persona-wallet-ledger.csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
   // Live progress from the desktop app: drive the processing dashboard with real events.
@@ -232,8 +271,13 @@ export default function App() {
     const dirty = (chunks || []).filter((k) => k.dirty);
     if (!dirty.length || confirmingAll) return;
     setConfirmingAll(true);
-    for (const k of dirty) { await saveChunk(k); }
+    setBulkProg({ done: 0, total: dirty.length });
+    for (let i = 0; i < dirty.length; i++) {
+      await saveChunk(dirty[i]);
+      setBulkProg({ done: i + 1, total: dirty.length });
+    }
     setConfirmingAll(false);
+    setBulkProg(null);
   };
 
   // Read an image file, resize to a 140px square, store as a compact data URL (no upload server).
@@ -291,22 +335,46 @@ export default function App() {
     if (!question || busy) return;
     setQ(""); setBusy(true);
     setMsgs((m) => [...m, { who: "user", text: question }, { who: "ai", typing: true }]);
-    const r = await apiPost("/api/chat", { question, space_id: activeId });
+    const r = await apiPost("/api/chat", { question, space_id: activeId, depth });
     setMsgs((m) => { const c = m.slice(0, -1); c.push({ who: "ai", text: r.error ? r.error : r.answer, refs: r.references || [] }); return c; });
     setBusy(false);
+  };
+
+  // ---- chunk tools (Add Chunk + AI Auto-Correct) ----
+  const addChunk = async () => {
+    const text = addChunkText.trim();
+    if (!text || addChunkBusy || !chunkVideo) return;
+    setAddChunkBusy(true);
+    const r = await apiPost("/api/chunks/add", { space_id: activeId, yt_id: chunkVideo.yt_id, text }).catch(() => ({}));
+    if (r.ok) {
+      const fresh = await apiGet(`/api/spaces/${activeId}/videos/${chunkVideo.yt_id}/chunks`).catch(() => ({}));
+      setChunks(fresh.chunks || []);
+      setAddChunkText(""); setAddChunkOpen(false);
+      loadVideos(activeId);
+    }
+    setAddChunkBusy(false);
+  };
+  const autoCorrect = async (k) => {
+    if (fixBusy) return;
+    setFixBusy(k.id);
+    const r = await apiPost("/api/chunks/autocorrect", { point_id: k.id }).catch(() => ({}));
+    if (r.text && r.text !== k.text) editChunkText(k.id, r.text);   // preview as an unsaved edit
+    setFixBusy(null);
   };
 
   const stage = stageIndex(job);
   const totalChunks = videos.reduce((n, v) => n + (Number(v.chunks) || 0), 0);
   const maxChunks = Math.max(1, ...videos.map((v) => Number(v.chunks) || 0));
 
-  // knowledge table data (search + sort + pagination — all client-side, all real)
+  // knowledge table data (search + sort + status filter + pagination — all client-side, all real)
   const PAGE = 8;
-  const kbRows = videos
+  const processingRow = job?.status === "running";        // live ingest shows as a row
+  const kbRows = (kbStatus === "processing" ? [] : videos)
     .filter((v) => (v.title || "").toLowerCase().includes(kbSearch.toLowerCase()) || (v.yt_id || "").includes(kbSearch))
     .sort((a, b) => (kbSortDesc ? new Date(b.created_at) - new Date(a.created_at) : new Date(a.created_at) - new Date(b.created_at)));
   const kbPages = Math.max(1, Math.ceil(kbRows.length / PAGE));
   const kbSlice = kbRows.slice(kbPage * PAGE, kbPage * PAGE + PAGE);
+  const showProcessingRow = processingRow && kbStatus !== "archived" && kbPage === 0;
 
   /* ---------------------------------------------------------------- sidebar */
   const NavItem = ({ icon, label, target, onClick }) => {
@@ -529,6 +597,23 @@ export default function App() {
             <span className="hidden sm:inline">Publish</span>
           </button>
         ))}
+        <div className="h-6 w-[1px] bg-outline-variant mx-1 hidden md:block" />
+        <div className="hidden md:flex items-center gap-3">
+          <button
+            className="text-on-surface-variant hover:text-primary transition-colors"
+            title="Clear this conversation"
+            onClick={() => setMsgs([])}
+          >
+            <MatIcon name="history" />
+          </button>
+          <button
+            className="text-on-surface-variant hover:text-primary transition-colors"
+            title="About this persona's knowledge"
+            onClick={() => { loadVideos(activeId); setView("knowledge"); }}
+          >
+            <MatIcon name="info" />
+          </button>
+        </div>
       </div>
     </header>
   ) : (
@@ -565,6 +650,24 @@ export default function App() {
     <>
       <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-margin-desktop">
         <div className="max-w-[800px] mx-auto space-y-12">
+          {/* Live ingestion strip (chat workspace screen) — real job state */}
+          {job?.status === "running" && (
+            <button className="glass-lab p-5 rounded-xl border border-outline-variant flex items-center gap-6 w-full text-left" onClick={() => setView("processing")}>
+              <div className="w-20 h-14 bg-black rounded relative overflow-hidden flex items-center justify-center shrink-0">
+                <MatIcon name="monitoring" className="text-white text-2xl z-10" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <MonoLabel className="text-primary block mb-1.5">Knowledge Ingestion Active</MonoLabel>
+                <div className="h-1 w-full bg-surface-container-highest rounded-full overflow-hidden">
+                  <div className="h-full bg-tertiary-container transition-all duration-1000" style={{ width: `${Math.round(job.progress || 0)}%` }} />
+                </div>
+                <p className="text-[11px] text-on-surface-variant mt-2 truncate">
+                  {job.step} {jobTitle ? `· "${jobTitle}"` : ""} … {Math.round(job.progress || 0)}% complete
+                </p>
+              </div>
+              <MatIcon name="sync" className="text-on-surface-variant animate-spin shrink-0" />
+            </button>
+          )}
           {msgs.length === 0 && (
             <div className="pt-16 text-center">
               <Avatar name={active?.name} image={active?.image_url} className="w-16 h-16 mx-auto mb-6" textClass="text-2xl" />
@@ -577,12 +680,21 @@ export default function App() {
             </div>
           )}
           {msgs.map((m, i) =>
-            m.who === "user" ? <UserMsg key={i} text={m.text} /> : <AiMsg key={i} text={m.text} refs={m.refs} typing={m.typing} />
+            m.who === "user" ? <UserMsg key={i} text={m.text} /> : <AiMsg key={i} text={m.text} refs={citeMode ? m.refs : []} typing={m.typing} />
           )}
           <div ref={end} />
         </div>
       </div>
-      <Composer value={q} onChange={setQ} onSend={ask} busy={busy} placeholder={`Ask ${active?.name || "the archive"}...`} />
+      <Composer
+        value={q}
+        onChange={setQ}
+        onSend={ask}
+        busy={busy}
+        placeholder={`Ask ${active?.name || "the archive"}...`}
+        onAttach={() => { setJob(null); setView("ingest"); }}
+        depth={{ value: depth, onChange: setDepth }}
+        citations={{ value: citeMode, onChange: setCiteMode }}
+      />
     </>
   );
 
@@ -689,6 +801,33 @@ export default function App() {
             <a className="underline underline-offset-4" href={DOWNLOAD_URL}>download it here</a>. A browser alone can't
             fetch from YouTube.
           </p>
+        </div>
+
+        {/* Guide cards (add-video screen) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mt-16">
+          <div className="group">
+            <div className="h-44 bg-surface-container-low mb-4 overflow-hidden relative border border-outline-variant flex items-center justify-center">
+              <MatIcon name="school" className="text-outline text-6xl group-hover:scale-110 transition-transform duration-500" />
+            </div>
+            <h4 className="font-headline-sm text-headline-sm text-primary mb-2">Optimal Source Selection</h4>
+            <p className="font-body-md text-body-md text-on-surface-variant">
+              Lectures, podcasts and long-form talks with clear speech produce the richest chunks. Channels and
+              playlists work too — each video is charged per minute and archived separately.
+            </p>
+          </div>
+          <a className="group no-underline" href={DOWNLOAD_URL}>
+            <div className="h-44 bg-surface-container-low mb-4 overflow-hidden relative border border-outline-variant flex items-center justify-center">
+              <MatIcon name="computer" className="text-outline text-6xl group-hover:scale-110 transition-transform duration-500" />
+              <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <span className="bg-white text-primary px-4 py-2 font-bold shadow-lg">Download for Windows</span>
+              </div>
+            </div>
+            <h4 className="font-headline-sm text-headline-sm text-primary mb-2">Desktop Client Guide</h4>
+            <p className="font-body-md text-body-md text-on-surface-variant">
+              The client downloads audio on your own machine — your IP, no blocks — then uploads it in resumable
+              parts, so a dropped connection continues where it left off.
+            </p>
+          </a>
         </div>
       </div>
     </div>
@@ -803,10 +942,19 @@ export default function App() {
                   <MatIcon name="cloud_done" />
                   <span className="font-headline-sm text-base">Processing Complete</span>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-3 flex-wrap">
                   <button className="px-5 py-2 border border-white/40 text-on-primary font-bold hover:bg-white hover:text-primary transition-all" onClick={() => { loadVideos(activeId); setView("knowledge"); }}>
                     Review Knowledge
                   </button>
+                  {active && !active.publish_status && (
+                    <button
+                      className="px-5 py-2 bg-white text-primary font-bold hover:opacity-90 transition-all flex items-center gap-2 disabled:opacity-60"
+                      onClick={publishPersonality}
+                      disabled={publishBusy}
+                    >
+                      {publishBusy && <Spinner className="w-4 h-4" />} Publish Persona
+                    </button>
+                  )}
                   <button className="px-5 py-2 bg-white text-primary font-bold hover:opacity-90 transition-all" onClick={() => setView("chat")}>
                     Chat Now
                   </button>
@@ -876,13 +1024,22 @@ export default function App() {
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center justify-between gap-4 p-4 glass-lab rounded-lg border border-outline-variant">
-          <button
-            className="flex items-center gap-2 px-4 py-2 border border-outline text-on-surface-variant hover:bg-surface-container-lowest transition-all"
-            onClick={() => setKbSortDesc((d) => !d)}
-          >
-            <MatIcon name="sort" className="text-sm" />
-            <MonoLabel>Sort by date · {kbSortDesc ? "newest" : "oldest"}</MonoLabel>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              className="flex items-center gap-2 px-4 py-2 border border-outline text-on-surface-variant hover:bg-surface-container-lowest transition-all"
+              onClick={() => setKbStatus((s) => (s === "all" ? "archived" : s === "archived" ? "processing" : "all"))}
+            >
+              <MatIcon name="filter_list" className="text-sm" />
+              <MonoLabel>Filter by status · {kbStatus}</MonoLabel>
+            </button>
+            <button
+              className="flex items-center gap-2 px-4 py-2 border border-outline text-on-surface-variant hover:bg-surface-container-lowest transition-all"
+              onClick={() => setKbSortDesc((d) => !d)}
+            >
+              <MatIcon name="sort" className="text-sm" />
+              <MonoLabel>Sort by date · {kbSortDesc ? "newest" : "oldest"}</MonoLabel>
+            </button>
+          </div>
           <div className="flex items-center gap-3">
             <div className="relative">
               <MatIcon name="search" className="absolute left-3 top-2.5 text-on-surface-variant text-sm" />
@@ -903,7 +1060,7 @@ export default function App() {
         </div>
 
         {/* Table */}
-        {videos.length === 0 ? (
+        {videos.length === 0 && !showProcessingRow ? (
           <div className="bg-surface-container-lowest editorial-shadow border border-outline-variant px-8 py-16 text-center">
             <MatIcon name="library_books" className="text-4xl text-outline" />
             <p className="font-headline-sm text-headline-sm mt-4 mb-1">The archive is empty</p>
@@ -922,6 +1079,33 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/30">
+                  {showProcessingRow && (
+                    <tr className="bg-surface-container-low/60 cursor-pointer" onClick={() => setView("processing")}>
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-4">
+                          <div className="w-16 h-10 bg-black relative overflow-hidden flex-shrink-0 flex items-center justify-center">
+                            <MatIcon name="monitoring" className="text-white" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-headline-sm text-lg text-primary truncate max-w-[320px]">{jobTitle || "Ingesting source…"}</p>
+                            <p className="font-citation text-citation text-on-surface-variant opacity-60">{job?.step}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 align-middle">
+                        <span className="font-citation text-on-surface-variant text-[10px] px-1.5 py-0.5 border border-primary text-primary uppercase tracking-wider">Processing</span>
+                      </td>
+                      <td className="px-6 py-5 align-middle">
+                        <div className="flex items-center gap-2">
+                          <span className="text-primary font-bold">{Math.round(job?.progress || 0)}%</span>
+                          <div className="h-1 w-24 bg-surface-container-high rounded-full overflow-hidden">
+                            <div className="h-full bg-primary" style={{ width: `${Math.round(job?.progress || 0)}%` }} />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-right"><Spinner className="w-4 h-4 text-primary" /></td>
+                    </tr>
+                  )}
                   {kbSlice.map((v) => (
                     <tr key={v.id} className="hover:bg-surface-container-low/40 transition-colors group">
                       <td className="px-6 py-5">
@@ -933,7 +1117,11 @@ export default function App() {
                             <button className="font-headline-sm text-lg text-primary hover:underline decoration-primary/30 underline-offset-4 truncate block max-w-[320px] text-left" onClick={() => openChunks(v)}>
                               {v.title}
                             </button>
-                            <p className="font-citation text-citation text-on-surface-variant opacity-60">Source ID: {v.yt_id}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <p className="font-citation text-citation text-on-surface-variant opacity-60">Source ID: {v.yt_id}</p>
+                              <span className="w-1 h-1 bg-outline-variant rounded-full" />
+                              <span className="font-citation text-on-surface-variant text-[10px] px-1.5 py-0.5 border border-outline-variant uppercase tracking-wider">Archived</span>
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -1045,7 +1233,7 @@ export default function App() {
           </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-outline-variant pb-2">
-              <MonoLabel className="text-primary">Segment Anchors</MonoLabel>
+              <MonoLabel className="text-primary">Metadata Citations</MonoLabel>
               <MatIcon name="schedule" className="text-secondary text-sm" />
             </div>
             <div className="space-y-3">
@@ -1088,9 +1276,36 @@ export default function App() {
             />
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
+            {addChunkOpen && (
+              <div className="border border-primary ring-1 ring-primary p-5 bg-white shadow-lg">
+                <div className="flex justify-between items-start mb-3">
+                  <span className="bg-primary text-on-primary px-2 py-0.5 font-mono-label text-[10px]">NEW CHUNK</span>
+                  <button className="text-on-surface-variant hover:text-primary" onClick={() => setAddChunkOpen(false)}>
+                    <MatIcon name="close" className="text-[18px]" />
+                  </button>
+                </div>
+                <textarea
+                  autoFocus
+                  className="w-full font-body-md text-[15px] text-on-surface border-none outline-none focus:ring-0 leading-relaxed resize-vertical min-h-[90px] bg-transparent"
+                  placeholder="Write the knowledge fragment to add to this source…"
+                  value={addChunkText}
+                  onChange={(e) => setAddChunkText(e.target.value)}
+                />
+                <div className="mt-3 pt-3 border-t border-outline-variant border-dashed flex justify-end">
+                  <button
+                    className="bg-primary text-on-primary px-5 py-2 font-mono-label text-mono-label uppercase tracking-widest flex items-center gap-2 disabled:opacity-50"
+                    disabled={addChunkBusy || !addChunkText.trim()}
+                    onClick={addChunk}
+                  >
+                    {addChunkBusy ? <Spinner className="w-3.5 h-3.5" /> : <MatIcon name="add" className="text-[16px]" />}
+                    {addChunkBusy ? "Embedding…" : "Add & Embed"}
+                  </button>
+                </div>
+              </div>
+            )}
             {chunks == null ? (
               <div className="flex items-center gap-3 text-on-surface-variant"><Spinner /> <span className="font-citation text-citation">Consulting the archive…</span></div>
-            ) : chunkRows.length === 0 ? (
+            ) : chunkRows.length === 0 && !addChunkOpen ? (
               <p className="font-citation text-citation text-on-surface-variant">No chunks match.</p>
             ) : (
               chunkRows.map((k) => (
@@ -1117,6 +1332,15 @@ export default function App() {
                       )}
                       <button
                         className="text-secondary hover:text-primary flex items-center gap-1 text-citation font-citation disabled:opacity-40"
+                        title="AI cleanup of transcription errors (preview — save to keep)"
+                        disabled={fixBusy === k.id || chunkBusy === k.id}
+                        onClick={() => autoCorrect(k)}
+                      >
+                        {fixBusy === k.id ? <Spinner className="w-3.5 h-3.5" /> : <MatIcon name="auto_fix" className="text-[16px]" />}
+                        {fixBusy === k.id ? "Correcting…" : "Auto-Correct"}
+                      </button>
+                      <button
+                        className="text-secondary hover:text-primary flex items-center gap-1 text-citation font-citation disabled:opacity-40"
                         disabled={chunkBusy === k.id || !k.dirty}
                         onClick={() => saveChunk(k)}
                       >
@@ -1139,6 +1363,35 @@ export default function App() {
                 </div>
               ))
             )}
+          </div>
+
+          {/* Footer action bar (chunk editor screen) */}
+          <div className="p-5 bg-surface-container border-t border-outline-variant shrink-0">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <button
+                className="bg-white border border-outline-variant px-4 py-2 text-citation font-mono-label uppercase tracking-widest flex items-center gap-2 hover:border-primary transition-colors"
+                onClick={() => setAddChunkOpen(true)}
+              >
+                <MatIcon name="add" className="text-[18px]" /> Add Chunk
+              </button>
+              <div className="flex items-center gap-6">
+                <div className="flex flex-col items-end">
+                  <span className="text-[10px] font-mono-label text-secondary uppercase">Progress</span>
+                  <span className="text-body-md font-bold text-primary">
+                    {bulkProg
+                      ? `${Math.round((bulkProg.done / bulkProg.total) * 100)}% Complete`
+                      : dirtyCount ? `${dirtyCount} unsaved edit${dirtyCount > 1 ? "s" : ""}` : "All synced"}
+                  </span>
+                </div>
+                <button
+                  className="bg-primary text-on-primary px-8 py-3 font-mono-label text-mono-label uppercase tracking-widest transition-transform active:scale-95 flex items-center gap-2 disabled:opacity-50"
+                  disabled={!dirtyCount || confirmingAll}
+                  onClick={confirmAll}
+                >
+                  {confirmingAll && <Spinner className="w-3.5 h-3.5" />} Confirm All Changes
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1219,6 +1472,19 @@ export default function App() {
                 </div>
               </div>
               <div className="flex-grow space-y-6">
+                <div className="space-y-2">
+                  <label className="font-citation text-citation text-secondary uppercase">Card Information</label>
+                  <div className="p-4 border border-outline-variant rounded flex items-center justify-between">
+                    <span className="text-on-surface-variant font-mono-label tracking-[0.2em]">•••• •••• •••• 4242</span>
+                    <div className="flex gap-2">
+                      <div className="w-8 h-5 bg-surface-container-highest rounded-sm" />
+                      <div className="w-8 h-5 bg-surface-container-highest rounded-sm" />
+                    </div>
+                  </div>
+                  <p className="font-citation text-[10px] text-on-surface-variant">
+                    Test mode — use Stripe's test card 4242 4242 4242 4242 on the payment page.
+                  </p>
+                </div>
                 <div className="scholarly-border">
                   <p className="font-citation text-citation italic text-on-surface-variant">
                     "Only pay for the wisdom you ingest — the balance never expires."
@@ -1247,6 +1513,62 @@ export default function App() {
             </div>
           </div>
         </div>
+
+        {/* Transaction Ledger (wallet screen) */}
+        <section className="mt-16">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="font-headline-sm text-headline-sm text-on-surface">Transaction Ledger</h3>
+            <button
+              className="text-secondary hover:text-primary flex items-center gap-1 disabled:opacity-40"
+              onClick={downloadLedger}
+              disabled={!tx || tx.length === 0}
+            >
+              <MonoLabel>Download Archive</MonoLabel>
+              <MatIcon name="download" className="text-[18px]" />
+            </button>
+          </div>
+          {tx == null ? (
+            <div className="flex items-center gap-3 text-on-surface-variant py-6">
+              <Spinner /> <span className="font-citation text-citation">Consulting the ledger…</span>
+            </div>
+          ) : tx.length === 0 ? (
+            <p className="font-citation text-citation text-on-surface-variant py-6">No transactions yet — your first top-up will appear here.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-outline-variant">
+                    <th className="pb-4 font-mono-label text-mono-label text-secondary uppercase tracking-widest">Date</th>
+                    <th className="pb-4 font-mono-label text-mono-label text-secondary uppercase tracking-widest">Description</th>
+                    <th className="pb-4 font-mono-label text-mono-label text-secondary uppercase tracking-widest">Type</th>
+                    <th className="pb-4 font-mono-label text-mono-label text-secondary uppercase tracking-widest text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/30">
+                  {tx.slice(0, 25).map((t, i) => {
+                    const credit = t.amount_pkr >= 0;
+                    return (
+                      <tr key={i} className="group hover:bg-surface-container-low transition-colors">
+                        <td className="py-4 font-citation text-citation text-on-surface whitespace-nowrap">
+                          {t.created_at ? new Date(t.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"}
+                        </td>
+                        <td className="py-4 font-body-md text-body-md text-on-surface">{txLabel(t)}</td>
+                        <td className="py-4">
+                          <span className={`px-2 py-0.5 text-[10px] font-bold rounded uppercase ${credit ? "bg-tertiary-fixed text-on-tertiary-fixed-variant" : "bg-surface-container-highest text-secondary"}`}>
+                            {credit ? "Credit" : "Debit"}
+                          </span>
+                        </td>
+                        <td className={`py-4 font-mono-label text-right font-bold ${credit ? "text-primary" : "text-on-surface-variant"}`}>
+                          {credit ? "+" : ""}{t.amount_pkr.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} PKR
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );
