@@ -278,6 +278,8 @@ export default function App() {
       <aside className="side">
         <div className="brand"><span className="logo"><svg width="17" height="17" viewBox="0 0 48 48" aria-hidden><path d="M18 35 V14 h7 a7 7 0 0 1 0 14 h-7" fill="none" stroke="#fff" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" /><circle cx="30.5" cy="21" r="2.4" fill="#fff" /></svg></span><span>Pers<span style={{ color: "#7c5cff" }}>o</span>na</span></div>
 
+        <a href="/explore" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "#6a49f2", fontSize: 13, fontWeight: 500, padding: "7px 8px", margin: "2px 0 8px", borderRadius: 7, background: "#f6f3ff" }}><Icon name="globe" size={14} /> Explore gallery</a>
+
         <div className="lbl">Personalities</div>
         <div className="psearch"><Icon name="searchic" size={14} /><input placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
         <div className="plist">

@@ -51,6 +51,7 @@ export default function Landing() {
           <div className="nav-links">
             <a href="#how">How it works</a>
             <a href="#features">Features</a>
+            <a href="/explore">Explore</a>
             <a className="ghost-btn" href={APP_URL}>Open web app →</a>
           </div>
         </nav>
