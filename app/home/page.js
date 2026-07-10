@@ -70,6 +70,8 @@ export default function App() {
   const [publishBusy, setPublishBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [deleteArm, setDeleteArm] = useState(null);    // personality id armed for delete
+  const [logoutArm, setLogoutArm] = useState(false);   // inline logout confirm
+  const [loggingOut, setLoggingOut] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(null);
 
   // knowledge view
@@ -504,13 +506,37 @@ export default function App() {
           <MatIcon name="help" />
           <span className="font-body-md text-sm">Help</span>
         </a>
-        <button
-          className="w-full flex items-center gap-3 p-2 text-error hover:opacity-80 cursor-pointer transition-all mt-2"
-          onClick={() => clerk.signOut({ redirectUrl: "/" })}
-        >
-          <MatIcon name="logout" />
-          <span className="font-body-md text-sm">Logout</span>
-        </button>
+        {logoutArm ? (
+          /* Inline confirm (no modal — per the no-modal rule) */
+          <div className="mt-2 p-3 border border-outline-variant bg-surface-container-low">
+            <p className="font-citation text-citation text-on-surface mb-2.5 flex items-center gap-2">
+              <MatIcon name="logout" className="text-error text-[18px]" /> Log out of Persona AI?
+            </p>
+            <div className="flex gap-2">
+              <button
+                className="flex-1 bg-error text-white py-1.5 font-mono-label text-mono-label uppercase tracking-widest hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5 disabled:opacity-60"
+                disabled={loggingOut}
+                onClick={() => { setLoggingOut(true); clerk.signOut({ redirectUrl: "/" }); }}
+              >
+                {loggingOut ? <Spinner className="w-3.5 h-3.5" /> : null} Log out
+              </button>
+              <button
+                className="flex-1 border border-outline-variant text-secondary py-1.5 font-mono-label text-mono-label uppercase tracking-widest hover:bg-surface-container transition-colors"
+                onClick={() => setLogoutArm(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            className="w-full flex items-center gap-3 p-2 text-error hover:opacity-80 cursor-pointer transition-all mt-2"
+            onClick={() => setLogoutArm(true)}
+          >
+            <MatIcon name="logout" />
+            <span className="font-body-md text-sm">Logout</span>
+          </button>
+        )}
       </div>
     </aside>
   );
