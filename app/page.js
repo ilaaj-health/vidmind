@@ -1,223 +1,284 @@
 "use client";
-import dynamic from "next/dynamic";
-
-const Hero3D = dynamic(() => import("./components/Hero3D"), { ssr: false });
+import { MatIcon } from "./components/ui";
 
 // The desktop installer, hosted on the vidmind repo's GitHub Release (repo is public).
 const DOWNLOAD_URL =
   "https://github.com/ilaaj-health/vidmind/releases/download/v0.1.0/VidMind-win32-x64.zip";
 const APP_URL = "/home";
 
-function WinIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M3 5.5 10.5 4.5v7H3zM10.5 12.5v7L3 18.5v-6zM11.5 4.3 21 3v8.5h-9.5zM21 12.5V21l-9.5-1.3v-7.2z" />
-    </svg>
-  );
-}
-
-// Line icons for the feature cards (stroke = currentColor).
-const ICONS = {
-  globe: (<><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3c2.6 2.9 2.6 15.1 0 18M12 3c-2.6 2.9-2.6 15.1 0 18" /></>),
-  graph: (<><circle cx="6" cy="7" r="2.1" /><circle cx="18" cy="7" r="2.1" /><circle cx="12" cy="18" r="2.1" /><path d="M8 7.4h8M7.4 8.8l3.5 7.3M16.6 8.8l-3.5 7.3" /></>),
-  quote: (<><rect x="4.5" y="3" width="15" height="18" rx="2.2" /><path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4" /></>),
-  shield: (<><path d="M12 3l7 3v5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6z" /><path d="M12.6 8.4l-2.6 4.1h3l-2.6 4.1" /></>),
-  video: (<><rect x="3" y="6.5" width="12.5" height="11" rx="2.2" /><path d="M7.7 10.1v3.8l3.3-1.9z" /><path d="M18.5 8.7v8.6M21 10.2v5.6" /></>),
-  desktop: (<><rect x="3" y="4.5" width="18" height="12" rx="2" /><path d="M8.5 20.5h7M12 16.5v4" /></>),
-};
-function FIcon({ name }) {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      {ICONS[name]}
-    </svg>
-  );
-}
-
 export default function Landing() {
   return (
-    <div className="lp">
-      <Hero3D />
-      <div className="veil" />
-
-      <div className="inner">
-        <nav className="nav">
-          <div className="brand">
-            <span className="logo">
-              <svg width="22" height="22" viewBox="0 0 48 48" aria-hidden><path d="M18 35 V14 h7 a7 7 0 0 1 0 14 h-7" fill="none" stroke="#fff" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" /><circle cx="30.5" cy="21" r="2.4" fill="#fff" /></svg>
-            </span>
-            Pers<span style={{ color: "#a78bfa" }}>o</span>na
-          </div>
-          <div className="nav-links">
-            <a href="#how">How it works</a>
-            <a href="#features">Features</a>
-            <a href="/explore">Explore</a>
-            <a className="ghost-btn" href={APP_URL}>Open web app →</a>
-          </div>
-        </nav>
-
-        <header className="hero">
-          <div className="pill"><span className="pdot" /> Desktop app · Windows</div>
-          <h1>
-            Turn any <span className="grad">YouTube video</span><br />
-            into a chattable <span className="grad2">knowledge base</span>.
-          </h1>
-          <p className="sub">
-            Paste a video or channel — Persona transcribes it, indexes it, and lets you ask
-            questions in any language with cited answers. Downloads run on your own machine,
-            so there are no blocks and no proxies.
-          </p>
-
-          <div className="cta">
-            <a className="dl" href={DOWNLOAD_URL}>
-              <WinIcon /> Download for Windows
-              <span className="dl-sub">Free · Windows 10/11 · ~113 MB</span>
-            </a>
-            <a className="try" href={APP_URL}>Try the chat in your browser</a>
-          </div>
-          <div className="note">No account needed · Your videos download locally on your PC</div>
-        </header>
-
-        <section id="how" className="how">
-          <div className="sec-h"><span>How it works</span></div>
-          <div className="steps">
-            {[
-              { n: "01", t: "Paste a link", d: "Drop any YouTube video or channel URL into the desktop app." },
-              { n: "02", t: "It processes locally", d: "The app downloads the audio on your machine, then transcribes & indexes it in the cloud." },
-              { n: "03", t: "Chat with cited answers", d: "Ask anything — English, Roman Urdu, or Urdu — and get answers with sources." },
-            ].map((s) => (
-              <div key={s.n} className="step">
-                <div className="step-n">{s.n}</div>
-                <div className="step-t">{s.t}</div>
-                <div className="step-d">{s.d}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section id="features" className="features">
-          <div className="sec-h"><span>Built for real content</span></div>
-          <div className="grid">
-            {[
-              { i: "globe", t: "Any language", d: "Multilingual retrieval — Urdu, English, or mixed. No single language wins." },
-              { i: "graph", t: "Interlinked knowledge", d: "A knowledge graph connects people, places & topics across videos." },
-              { i: "quote", t: "Cited answers", d: "Every answer points back to the exact source it came from." },
-              { i: "shield", t: "No proxies, no blocks", d: "Audio downloads on your own IP — YouTube never blocks you." },
-              { i: "video", t: "Videos or channels", d: "Process a single talk or a whole channel's back-catalogue." },
-              { i: "desktop", t: "Runs on your machine", d: "The heavy download happens locally; only audio goes to the server." },
-            ].map((f) => (
-              <div key={f.t} className="feat">
-                <div className="feat-i"><FIcon name={f.i} /></div>
-                <div className="feat-t">{f.t}</div>
-                <div className="feat-d">{f.d}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="final">
-          <h2>Ready to chat with your videos?</h2>
-          <a className="dl big" href={DOWNLOAD_URL}>
-            <WinIcon /> Download Persona for Windows
+    <div className="bg-background text-on-surface font-body-md selection:bg-primary-fixed">
+      {/* Top Navigation Bar */}
+      <header className="fixed top-0 w-full z-50 bg-surface-container-lowest/80 backdrop-blur-md flex justify-between items-center px-margin-mobile md:px-margin-desktop h-16 border-b border-outline-variant shadow-sm">
+        <div className="flex items-center gap-4">
+          <a href="/" className="font-display-lg text-display-lg-mobile md:text-headline-sm text-primary no-underline">Persona</a>
+          <nav className="hidden md:flex gap-8 ml-12">
+            <a className="font-body-md text-primary border-b-2 border-primary pb-1 no-underline" href="#how">How it works</a>
+            <a className="font-body-md text-on-surface-variant hover:text-primary transition-all no-underline" href="#features">Features</a>
+            <a className="font-body-md text-on-surface-variant hover:text-primary transition-all no-underline" href="/explore">Explore</a>
+          </nav>
+        </div>
+        <div className="flex items-center gap-6">
+          <a className="hidden sm:block font-body-md text-on-surface-variant hover:text-primary transition-all no-underline" href={APP_URL}>Open Web App</a>
+          <a
+            className="bg-primary text-on-primary px-6 py-2 font-mono-label text-mono-label uppercase tracking-widest hover:bg-on-surface-variant transition-transform active:scale-95 no-underline"
+            href={DOWNLOAD_URL}
+          >
+            Download for Desktop
           </a>
-          <div className="note">Prefer just chatting? <a href={APP_URL}>Open the web app →</a></div>
+        </div>
+      </header>
+
+      <main className="pt-16">
+        {/* Hero Section */}
+        <section className="relative min-h-[85vh] flex items-center overflow-hidden px-margin-mobile md:px-margin-desktop bg-surface py-20">
+          <div className="container mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 relative z-10 items-center max-w-container-max">
+            <div className="lg:col-span-6 space-y-8">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-surface-container-high rounded-full border border-outline-variant">
+                <MatIcon name="auto_awesome" className="text-primary text-[16px]" />
+                <span className="font-mono-label text-[10px] tracking-[0.1em] text-on-surface-variant uppercase">Urdu &amp; Roman Urdu Support</span>
+              </div>
+              <h1 className="font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface leading-tight">
+                Talk to the <span className="italic font-light">wisdom</span> of the world.
+              </h1>
+              <p className="font-body-lg text-body-lg text-on-surface-variant max-w-xl">
+                Persona transforms YouTube lectures into your personal archive. Paste a video or a
+                whole channel — it transcribes, indexes, and turns passive viewing into an active
+                dialogue with cited answers, in any language.
+              </p>
+              <div className="flex flex-wrap gap-4 pt-4">
+                <a href={APP_URL} className="bg-primary text-on-primary px-8 py-4 font-headline-sm text-base flex items-center gap-3 hover:shadow-lg transition-all active:scale-95 no-underline">
+                  Try the Demo <MatIcon name="arrow_forward" />
+                </a>
+                <a href="/explore" className="bg-transparent border border-primary text-primary px-8 py-4 font-headline-sm text-base hover:bg-surface-container-low transition-all no-underline">
+                  View Examples
+                </a>
+              </div>
+              <p className="font-citation text-citation text-on-surface-variant">
+                Desktop app for Windows 10/11 (~113&nbsp;MB) · videos download on your own machine — no blocks, no proxies.
+              </p>
+            </div>
+
+            {/* Chat preview illustration */}
+            <div className="lg:col-span-6 relative">
+              <div className="floating-ui relative z-20 space-y-6">
+                <div className="glass-lab p-6 rounded-xl shadow-xl max-w-md mx-auto md:ml-auto">
+                  <div className="flex items-center gap-4 mb-6 border-b border-outline-variant pb-4">
+                    <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary bg-primary text-on-primary flex items-center justify-center">
+                      <span className="font-headline-sm text-lg select-none">M</span>
+                    </div>
+                    <div>
+                      <h4 className="font-headline-sm text-lg">Marcus Aurelius</h4>
+                      <p className="font-citation text-citation text-on-surface-variant">Archived from: "Stoic Meditation Series"</p>
+                    </div>
+                  </div>
+                  <div className="space-y-6">
+                    <div className="flex justify-end">
+                      <div className="bg-primary-container text-on-primary-fixed px-4 py-2 rounded-lg max-w-[80%]">
+                        <p className="font-body-md text-sm text-primary-fixed">How should I approach a difficult workday tomorrow?</p>
+                      </div>
+                    </div>
+                    <div className="bg-surface-container-low px-4 py-3 rounded-lg border border-outline-variant">
+                      <p className="font-display-lg text-sm italic mb-2">
+                        "Begin the morning by saying to yourself, I shall meet with the busybody, the ungrateful, arrogant, deceitful, envious, unsocial..."
+                      </p>
+                      <div className="citation-line pl-3">
+                        <p className="font-citation text-[10px] text-on-tertiary-container uppercase tracking-widest">Source: Meditations bk. II</p>
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <div className="bg-primary-container px-4 py-2 rounded-lg max-w-[80%]">
+                        <p className="font-body-md text-sm text-primary-fixed">Kal ke mushkil kaam ko kaise dekhein?</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-6 flex items-center gap-2 bg-surface p-2 border border-outline rounded">
+                    <span className="flex-1 font-body-md text-sm text-on-surface-variant/60 pl-2 select-none">Inquire of the source...</span>
+                    <MatIcon name="send" className="text-primary p-1" />
+                  </div>
+                </div>
+
+                {/* Data Ingestion Overlay */}
+                <div className="absolute -bottom-10 -left-10 md:-left-20 glass-lab p-4 w-64 border-l-4 border-tertiary-fixed shadow-lg hidden md:block">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MatIcon name="fiber_manual_record" fill className="text-[14px] text-on-tertiary-container animate-pulse" />
+                    <span className="font-mono-label text-[10px] uppercase">Processing Knowledge</span>
+                  </div>
+                  <div className="w-full bg-surface-container-highest h-1 rounded-full mb-2">
+                    <div className="bg-on-tertiary-container h-1 rounded-full w-2/3" />
+                  </div>
+                  <div className="flex justify-between font-citation text-[10px] text-on-surface-variant">
+                    <span>URI: YT_XJ920...</span>
+                    <span>68% Complete</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
-        <footer className="foot">
-          <span>Persona</span>
-          <span>Built for creators & researchers · 2026</span>
-        </footer>
-      </div>
+        {/* How it works */}
+        <section id="how" className="py-24 px-margin-mobile md:px-margin-desktop bg-surface-container-low border-y border-outline-variant">
+          <div className="max-w-container-max mx-auto">
+            <div className="mb-16">
+              <h2 className="font-headline-md text-headline-md text-on-surface mb-4">How the Archive Grows</h2>
+              <div className="w-24 h-1 bg-primary" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+              {[
+                { n: "01", t: "Paste a link", d: "Drop any YouTube video or channel URL into the desktop app." },
+                { n: "02", t: "It processes locally", d: "Audio downloads on your machine, then is transcribed, chunked, and indexed in the cloud." },
+                { n: "03", t: "Chat with cited answers", d: "Ask anything — English, Urdu, or Roman Urdu — every answer points back to its source." },
+              ].map((s) => (
+                <div key={s.n} className="bg-surface-container-lowest border border-outline-variant p-8 hover:border-primary transition-colors">
+                  <p className="font-display-lg text-headline-md text-primary mb-6">{s.n}</p>
+                  <h3 className="font-headline-sm text-headline-sm mb-3">{s.t}</h3>
+                  <p className="font-body-md text-body-md text-on-surface-variant">{s.d}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-      <style jsx>{`
-        .lp { position: relative; min-height: 100vh; overflow-x: hidden;
-          background:
-            radial-gradient(1100px 600px at 15% -10%, rgba(124,92,255,.22), transparent 60%),
-            radial-gradient(900px 600px at 110% 0%, rgba(91,140,255,.16), transparent 55%),
-            #07080c; color: #eceef4; }
-        .veil { position: fixed; inset: 0; z-index: 1; pointer-events: none;
-          background: radial-gradient(1200px 700px at 50% 30%, transparent 40%, rgba(7,8,12,.55) 100%); }
-        .inner { position: relative; z-index: 2; max-width: 1080px; margin: 0 auto; padding: 0 22px 70px; }
+        {/* Features Bento Grid */}
+        <section id="features" className="py-24 px-margin-mobile md:px-margin-desktop bg-surface-container-lowest">
+          <div className="max-w-container-max mx-auto">
+            <div className="mb-16">
+              <h2 className="font-headline-md text-headline-md text-on-surface mb-4">A Systematic Approach to Wisdom</h2>
+              <div className="w-24 h-1 bg-primary" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+              {/* Feature 1: Multilingual */}
+              <div className="md:col-span-7 bg-surface-container-low p-8 border border-outline-variant hover:border-primary transition-colors group flex flex-col justify-between min-h-[320px]">
+                <div>
+                  <MatIcon name="translate" className="text-primary mb-6" />
+                  <h3 className="font-headline-sm text-headline-sm mb-4">Linguistic Fluidity</h3>
+                  <p className="font-body-md text-body-md text-on-surface-variant max-w-md">
+                    Break the language barrier. Interface with complex global ideas in English, Urdu, or Roman Urdu with native precision.
+                  </p>
+                </div>
+                <div className="mt-8 flex gap-4 overflow-hidden grayscale opacity-50 group-hover:grayscale-0 group-hover:opacity-100 transition-all">
+                  <span className="font-display-lg text-lg border-r pr-4 border-outline">Urdu</span>
+                  <span className="font-display-lg text-lg border-r pr-4 border-outline italic">English</span>
+                  <span className="font-display-lg text-lg">Roman Urdu</span>
+                </div>
+              </div>
+              {/* Feature 2: Permanent Knowledge */}
+              <div className="md:col-span-5 bg-tertiary-container text-tertiary-fixed p-8 border border-tertiary shadow-xl flex flex-col justify-between">
+                <div>
+                  <MatIcon name="database" className="text-tertiary-fixed mb-6" />
+                  <h3 className="font-headline-sm text-headline-sm mb-4">Permanent Knowledge</h3>
+                  <p className="font-body-md text-body-md opacity-80">
+                    Once ingested, the persona resides in your private archive. Knowledge that doesn't expire and is always ready for citation.
+                  </p>
+                </div>
+                <div className="mt-8 border-t border-tertiary-fixed-dim/20 pt-4">
+                  <div className="flex items-center gap-2">
+                    <MatIcon name="check_circle" fill className="text-sm" />
+                    <span className="font-citation text-[10px] uppercase tracking-widest">Answers cite their sources</span>
+                  </div>
+                </div>
+              </div>
+              {/* Feature 3: Pay as you go */}
+              <div className="md:col-span-4 bg-surface p-8 border border-outline-variant hover:shadow-md transition-all">
+                <MatIcon name="payments" className="text-primary mb-6" />
+                <h3 className="font-headline-sm text-headline-sm mb-2">Pay-as-you-go</h3>
+                <p className="font-body-md text-body-md text-on-surface-variant">
+                  No subscription bloat. Only pay for the wisdom you ingest — a prepaid PKR wallet that never expires. Chat is free.
+                </p>
+                <div className="mt-6 flex items-baseline gap-1">
+                  <span className="font-headline-md text-headline-md text-primary">≈ PKR 2</span>
+                  <span className="font-citation text-citation">/minute of wisdom</span>
+                </div>
+              </div>
+              {/* Feature 4: High Tech Monitor */}
+              <div className="md:col-span-8 bg-on-surface overflow-hidden relative group">
+                <div className="absolute inset-0 opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity">
+                  <div
+                    className="w-full h-full"
+                    style={{
+                      backgroundImage:
+                        "linear-gradient(#ffffff 1px, transparent 1px), linear-gradient(90deg, #ffffff 1px, transparent 1px)",
+                      backgroundSize: "20px 20px",
+                    }}
+                  />
+                </div>
+                <div className="relative p-8 h-full flex flex-col md:flex-row gap-8 items-center">
+                  <div className="flex-1">
+                    <h3 className="font-headline-sm text-headline-sm text-surface-container-lowest mb-4">Laboratory Precision</h3>
+                    <p className="font-body-md text-body-md text-surface-variant opacity-70">
+                      Experience the Lab View. Watch in real time as the desktop app fetches, transcribes, chunks, and feeds each video to your persona.
+                    </p>
+                  </div>
+                  <div className="w-full md:w-64 aspect-video bg-black/50 border border-outline-variant/30 relative rounded p-2 overflow-hidden">
+                    <div className="video-flicker absolute inset-0 flex items-center justify-center">
+                      <MatIcon name="monitoring" className="text-on-surface-variant text-4xl" />
+                    </div>
+                    <div className="absolute bottom-2 left-2 right-2 flex justify-between">
+                      <div className="h-1 flex-1 bg-surface-variant/20 mr-4">
+                        <div className="h-full bg-tertiary-fixed w-1/3" />
+                      </div>
+                      <span className="font-mono-label text-[8px] text-tertiary-fixed">SCANNING_V_092</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-        .nav { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
-        .brand { display: flex; align-items: center; gap: 11px; font-weight: 800; font-size: 19px; letter-spacing: -.02em; }
-        .logo { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
-          background: linear-gradient(135deg, #7c5cff, #5b8cff); box-shadow: 0 8px 22px -6px rgba(124,92,255,.75); }
-        .nav-links { display: flex; align-items: center; gap: 22px; font-size: 14px; color: #b7bccb; }
-        .nav-links a { color: inherit; text-decoration: none; transition: color .15s; }
-        .nav-links a:hover { color: #fff; }
-        .ghost-btn { border: 1px solid rgba(255,255,255,.16); padding: 8px 15px; border-radius: 10px;
-          background: rgba(255,255,255,.03); backdrop-filter: blur(8px); }
+        {/* CTA Section */}
+        <section className="py-24 px-margin-mobile md:px-margin-desktop bg-surface">
+          <div className="max-w-4xl mx-auto text-center space-y-8">
+            <h2 className="font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface">The archive is waiting for you.</h2>
+            <p className="font-body-lg text-body-lg text-on-surface-variant">
+              Join researchers and students turning the internet's noise into structured knowledge.
+            </p>
+            <div className="flex flex-col sm:flex-row justify-center gap-4 pt-6">
+              <a href={APP_URL} className="bg-primary text-on-primary px-10 py-5 font-headline-sm text-lg hover:bg-on-surface-variant transition-all no-underline">
+                Get Started for Free
+              </a>
+              <a href="/explore" className="bg-transparent border-2 border-primary text-primary px-10 py-5 font-headline-sm text-lg hover:bg-primary hover:text-on-primary transition-all no-underline">
+                Explore the Library
+              </a>
+            </div>
+            <p className="font-citation text-citation text-on-surface-variant">
+              No account needed to browse · your videos download locally on your PC.
+            </p>
+          </div>
+        </section>
+      </main>
 
-        .hero { text-align: center; padding: 70px 0 60px; }
-        .pill { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: #cdd2e0;
-          border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); backdrop-filter: blur(8px);
-          padding: 7px 14px; border-radius: 999px; margin-bottom: 26px; }
-        .pdot { width: 7px; height: 7px; border-radius: 50%; background: #34d399; box-shadow: 0 0 0 3px rgba(52,211,153,.18); }
-        .hero h1 { font-size: clamp(34px, 6vw, 62px); line-height: 1.05; font-weight: 850; letter-spacing: -.035em;
-          margin: 0 0 22px; }
-        .grad { background: linear-gradient(120deg, #c4b5fd, #93c5fd 60%, #a7f3d0);
-          -webkit-background-clip: text; background-clip: text; color: transparent; }
-        .grad2 { background: linear-gradient(120deg, #93c5fd, #c4b5fd);
-          -webkit-background-clip: text; background-clip: text; color: transparent; }
-        .sub { color: #9aa0b2; max-width: 640px; margin: 0 auto 34px; font-size: clamp(15px, 2vw, 17px); line-height: 1.65; }
-
-        .cta { display: flex; gap: 16px; justify-content: center; align-items: center; flex-wrap: wrap; }
-        .dl { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; text-decoration: none;
-          color: #fff; font-weight: 750; font-size: 16px; padding: 15px 30px; border-radius: 14px;
-          background: linear-gradient(135deg, #7c5cff, #5b8cff);
-          box-shadow: 0 16px 40px -12px rgba(124,92,255,.8); transition: transform .16s, box-shadow .16s; position: relative; }
-        .dl svg { vertical-align: -3px; margin-right: 8px; display: inline; }
-        .dl:hover { transform: translateY(-2px); box-shadow: 0 22px 50px -12px rgba(124,92,255,.9); }
-        .dl-sub { font-size: 11.5px; font-weight: 500; color: rgba(255,255,255,.8); letter-spacing: .01em; }
-        .try { color: #cdd2e0; text-decoration: none; font-size: 15px; border-bottom: 1px solid rgba(255,255,255,.25);
-          padding-bottom: 2px; transition: color .15s; }
-        .try:hover { color: #fff; }
-        .note { color: #6b7186; font-size: 13px; margin-top: 20px; }
-        .note a { color: #93c5fd; text-decoration: none; }
-
-        .sec-h { display: flex; justify-content: center; margin-bottom: 34px; }
-        .sec-h span { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: #7c8296;
-          border: 1px solid rgba(255,255,255,.1); border-radius: 999px; padding: 6px 16px; }
-
-        .how { padding: 60px 0; }
-        .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-        .step { border: 1px solid rgba(255,255,255,.09); border-radius: 18px; padding: 26px 22px;
-          background: linear-gradient(180deg, rgba(23,26,34,.7), rgba(20,22,29,.55)); backdrop-filter: blur(10px); }
-        .step-n { font-size: 13px; font-weight: 800; letter-spacing: .1em;
-          background: linear-gradient(120deg, #c4b5fd, #93c5fd); -webkit-background-clip: text; background-clip: text;
-          color: transparent; margin-bottom: 14px; }
-        .step-t { font-weight: 750; font-size: 18px; margin-bottom: 8px; letter-spacing: -.01em; }
-        .step-d { color: #9aa0b2; font-size: 14.5px; line-height: 1.6; }
-
-        .features { padding: 50px 0; }
-        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-        .feat { border: 1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 22px;
-          background: rgba(255,255,255,.02); transition: border-color .2s, transform .2s; }
-        .feat:hover { border-color: rgba(124,92,255,.45); transform: translateY(-3px); }
-        .feat-i { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
-          margin-bottom: 14px; color: #c4b5fd;
-          background: linear-gradient(135deg, rgba(124,92,255,.22), rgba(91,140,255,.14));
-          border: 1px solid rgba(124,92,255,.28); }
-        .feat:hover .feat-i { color: #fff; }
-        .feat-t { font-weight: 700; font-size: 16px; margin-bottom: 7px; }
-        .feat-d { color: #9aa0b2; font-size: 14px; line-height: 1.6; }
-
-        .final { text-align: center; padding: 80px 0 40px; }
-        .final h2 { font-size: clamp(26px, 4vw, 40px); font-weight: 800; letter-spacing: -.03em; margin: 0 0 28px; }
-        .dl.big { flex-direction: row; align-items: center; gap: 4px; }
-        .final .note { margin-top: 22px; }
-
-        .foot { display: flex; justify-content: space-between; align-items: center; padding: 40px 0 0;
-          border-top: 1px solid rgba(255,255,255,.07); margin-top: 50px; color: #6b7186; font-size: 13px; }
-        .foot span:first-child { font-weight: 700; color: #b7bccb; }
-
-        @media (max-width: 760px) {
-          .nav-links a:not(.ghost-btn) { display: none; }
-          .steps, .grid { grid-template-columns: 1fr; }
-          .hero { padding: 46px 0 40px; }
-        }
-      `}</style>
+      {/* Footer */}
+      <footer className="w-full py-12 px-margin-mobile md:px-margin-desktop bg-surface-container flex flex-col md:flex-row justify-between items-center gap-8 border-t border-outline-variant">
+        <div className="flex flex-col items-center md:items-start gap-4">
+          <span className="font-headline-sm text-headline-sm text-on-surface">Persona AI</span>
+          <p className="font-citation text-citation text-on-surface-variant">© 2026 Persona AI. All rights reserved.</p>
+        </div>
+        <nav className="flex flex-wrap justify-center gap-8">
+          <a className="font-citation text-citation text-secondary hover:text-primary transition-all no-underline" href="#how">How it works</a>
+          <a className="font-citation text-citation text-secondary hover:text-primary transition-all no-underline" href="#features">Features</a>
+          <a className="font-citation text-citation text-secondary hover:text-primary transition-all no-underline" href="/explore">Explore</a>
+          <a className="font-citation text-citation text-secondary hover:text-primary transition-all no-underline" href={APP_URL}>Web App</a>
+        </nav>
+        <div className="flex gap-4">
+          <a
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-high hover:bg-primary hover:text-on-primary transition-colors"
+            href={DOWNLOAD_URL}
+            title="Download for Windows"
+          >
+            <MatIcon name="download" className="text-xl" />
+          </a>
+          <a
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container-high hover:bg-primary hover:text-on-primary transition-colors"
+            href="/explore"
+            title="Explore the gallery"
+          >
+            <MatIcon name="language" className="text-xl" />
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }

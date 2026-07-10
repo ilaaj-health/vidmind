@@ -1,71 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { UserButton, useAuth, useUser, SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { MatIcon, Avatar, UserMsg, AiMsg, Composer } from "../components/ui";
 
 const API = process.env.NEXT_PUBLIC_API_BASE || "";
 
-// Renders an AI answer as markdown. Uses inline styles (not styled-jsx) so the
-// styling reliably reaches ReactMarkdown's runtime-rendered elements.
-const CITE = { display: "inline-block", fontSize: "10px", fontWeight: 600, color: "#7c5cff", background: "#efeaff", borderRadius: "4px", padding: "0 5px", margin: "0 2px", verticalAlign: "super", lineHeight: 1.4 };
-const MD = {
-  p: ({ children }) => <p style={{ margin: "0 0 8px", lineHeight: 1.6 }}>{citeChildren(children)}</p>,
-  ul: ({ children }) => <ul style={{ margin: "0 0 8px", paddingLeft: "18px" }}>{children}</ul>,
-  ol: ({ children }) => <ol style={{ margin: "0 0 8px", paddingLeft: "18px" }}>{children}</ol>,
-  li: ({ children }) => <li style={{ margin: "4px 0", lineHeight: 1.55 }}>{citeChildren(children)}</li>,
-  strong: ({ children }) => <strong style={{ fontWeight: 600, color: "#1c2030" }}>{children}</strong>,
-  h2: ({ children }) => <h3 style={{ fontSize: "14px", fontWeight: 600, margin: "12px 0 6px" }}>{children}</h3>,
-  h3: ({ children }) => <h3 style={{ fontSize: "13.5px", fontWeight: 600, margin: "12px 0 6px" }}>{children}</h3>,
-  code: ({ children }) => <code style={{ background: "#eceef3", borderRadius: "4px", padding: "1px 5px", fontSize: "12px" }}>{children}</code>,
-  a: ({ href, children }) => <a href={href} target="_blank" rel="noreferrer" style={{ color: "#7c5cff", textDecoration: "underline" }}>{children}</a>,
-};
-function Markdown({ text }) {
-  return (
-    <div style={{ whiteSpace: "normal" }}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD}>{text || ""}</ReactMarkdown>
-    </div>
-  );
-}
-
-// Replace [1], [2][3] inside text nodes with styled superscript pills.
-function citeChildren(children) {
-  return (Array.isArray(children) ? children : [children]).map((c, i) => {
-    if (typeof c !== "string") return c;
-    const parts = c.split(/(\[\d+\])/g);
-    return parts.map((p, j) => {
-      const m = p.match(/^\[(\d+)\]$/);
-      return m ? <sup key={i + "-" + j} style={CITE}>{m[1]}</sup> : p;
-    });
-  });
-}
-
-function Icon({ name, size = 16 }) {
-  const p = {
-    chat: <path d="M4 5.5h16v10H8.5L4 19.5z" />,
-    video: <><rect x="3.5" y="5" width="17" height="13" rx="2" /><path d="M10 9.5v4l3.5-2z" /></>,
-    plus: <path d="M12 5v14M5 12h14" />,
-    user: <><circle cx="12" cy="8" r="3.3" /><path d="M5.8 19.5a6.2 6.2 0 0 1 12.4 0" /></>,
-    bot: <><rect x="4.5" y="7.5" width="15" height="11" rx="3.2" /><path d="M12 7.5V4.5M8.8 12.5h.01M15.2 12.5h.01M9.5 15.5h5" /></>,
-    check: <path d="M4.5 12.5l4.5 4.5L19.5 6.5" />,
-    alert: <><path d="M12 3.5l9 15.5H3z" /><path d="M12 9.5v4M12 16.5v.4" /></>,
-    wallet: <><rect x="3" y="6" width="18" height="13" rx="2.5" /><path d="M3 10h18M16 14.5h2.5" /></>,
-    send: <path d="M4.5 11.5l15-7-6.5 15-2.8-5.7z" />,
-    close: <path d="M6 6l12 12M18 6L6 18" />,
-    camera: <><rect x="3.5" y="7" width="17" height="12" rx="2.5" /><circle cx="12" cy="13" r="3" /><path d="M8.5 7l1.2-2h4.6l1.2 2" /></>,
-    searchic: <><circle cx="11" cy="11" r="6.5" /><path d="M20 20l-4-4" /></>,
-    refresh: <><path d="M20 11a8 8 0 1 0-.7 4.5" /><path d="M20 5v6h-6" /></>,
-    clock: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></>,
-    link: <><path d="M9.5 14.5l5-5" /><path d="M11 6.5l1-1a3.5 3.5 0 0 1 5 5l-2 2" /><path d="M13 17.5l-1 1a3.5 3.5 0 0 1-5-5l2-2" /></>,
-    trash: <><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 12.5h9l1-12.5M10 10.5v6M14 10.5v6" /></>,
-    eye: <><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="3" /></>,
-    globe: <><circle cx="12" cy="12" r="8.5" /><path d="M3.5 12h17M12 3.5c2.6 2.6 2.6 14.4 0 17M12 3.5c-2.6 2.6-2.6 14.4 0 17" /></>,
-  }[name] || null;
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-    strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>{p}</svg>;
-}
-
-const STAGES = ["Fetching video", "Uploading audio", "Transcribing", "Chunking", "Feeding to AI"];
+const STAGES = ["Fetching", "Uploading", "Transcribing", "Chunking", "Feeding to AI"];
 function stageIndex(job) {
   if (!job) return -1;
   if (job.status === "done") return STAGES.length;
@@ -85,6 +25,38 @@ function timeAgo(iso) {
     if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
     return `${Math.floor(s / 86400)}d ago`;
   } catch { return ""; }
+}
+
+/* --------------------------------------------------- shared modal chrome */
+function Modal({ onClose, wide, children }) {
+  return (
+    <div className="fixed inset-0 bg-primary/40 backdrop-blur-sm grid place-items-center z-50 p-5" onClick={onClose}>
+      <div
+        className={`w-full ${wide ? "max-w-3xl" : "max-w-xl"} max-h-[86vh] flex flex-col bg-surface-container-lowest border border-outline-variant editorial-shadow`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+function ModalHead({ kicker, title, onClose }) {
+  return (
+    <div className="flex justify-between items-start px-8 pt-8 pb-4 shrink-0">
+      <div>
+        {kicker && (
+          <p className="font-mono-label text-mono-label uppercase tracking-widest text-on-surface-variant mb-2">{kicker}</p>
+        )}
+        <h2 className="font-display-lg text-display-lg-mobile text-primary leading-tight">{title}</h2>
+      </div>
+      <button className="text-on-surface-variant hover:text-primary transition-colors p-1" onClick={onClose} aria-label="Close">
+        <MatIcon name="close" />
+      </button>
+    </div>
+  );
+}
+function MonoLabel({ children, className = "" }) {
+  return <span className={`font-mono-label text-mono-label uppercase tracking-widest ${className}`}>{children}</span>;
 }
 
 export default function App() {
@@ -267,354 +239,639 @@ export default function App() {
     setBusy(false);
   };
 
-  const initial = (s) => (s?.name || "?").trim().charAt(0).toUpperCase();
   const stage = stageIndex(job);
+  const totalChunks = videos.reduce((n, v) => n + (Number(v.chunks) || 0), 0);
+  const maxChunks = Math.max(1, ...videos.map((v) => Number(v.chunks) || 0));
 
   return (
     <>
       <SignedOut><RedirectToSignIn /></SignedOut>
       <SignedIn>
-    <div className="shell">
-      <aside className="side">
-        <div className="brand"><span className="logo"><svg width="17" height="17" viewBox="0 0 48 48" aria-hidden><path d="M18 35 V14 h7 a7 7 0 0 1 0 14 h-7" fill="none" stroke="#fff" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" /><circle cx="30.5" cy="21" r="2.4" fill="#fff" /></svg></span><span>Pers<span style={{ color: "#7c5cff" }}>o</span>na</span></div>
-
-        <a href="/explore" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "#6a49f2", fontSize: 13, fontWeight: 500, padding: "7px 8px", margin: "2px 0 8px", borderRadius: 7, background: "#f6f3ff" }}><Icon name="globe" size={14} /> Explore gallery</a>
-
-        <div className="lbl">Personalities</div>
-        <div className="psearch"><Icon name="searchic" size={14} /><input placeholder="Search…" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
-        <div className="plist">
-          {spaces.filter((s) => s.name.toLowerCase().includes(search.toLowerCase())).map((s) => (
-            <div key={s.id} className={"prow " + (s.id === activeId ? "on" : "")} onClick={() => setActiveId(s.id)} role="button" tabIndex={0}>
-              <span className="pav">{s.image_url ? <img src={s.image_url} alt="" /> : initial(s)}</span>
-              <span className="pinfo"><span className="pn">{s.name}</span><span className="pm">{s.status === "deceased" ? "In memory" : "Alive"} · {s.videos} videos</span></span>
-              <span className="pdel" title="Delete personality" onClick={(e) => { e.stopPropagation(); deletePersonality(s); }}><Icon name="trash" size={14} /></span>
+        <div className="flex h-screen overflow-hidden bg-surface text-on-surface font-body-md selection:bg-primary-fixed">
+          {/* ------------------------------------------------ Side Nav */}
+          <aside className="hidden md:flex flex-col h-screen py-8 px-4 bg-surface border-r border-outline-variant w-80 shrink-0">
+            <div className="mb-6 px-2">
+              <h1 className="font-headline-md text-headline-md font-bold text-primary">Persona AI</h1>
+              <p className="font-citation text-citation text-secondary">Modern Archive</p>
             </div>
-          ))}
-          <button className="prow add" onClick={() => setPOpen(true)}><Icon name="plus" size={14} /> New personality</button>
-        </div>
 
-        <div className="foot">
-          <div className="wal"><Icon name="wallet" size={14} /><span>{wallet == null ? "Rs —" : `Rs ${Number(wallet).toLocaleString()}`}</span><button className="tu" onClick={() => setTopupOpen(true)}>Top up</button></div>
-          <div className="ur"><UserButton afterSignOutUrl="/" /><span>Account</span></div>
-        </div>
-      </aside>
-
-      <main className="main">
-        <header className="top">
-          <div className="th">
-            <span className="thav">{active?.image_url ? <img src={active.image_url} alt="" /> : initial(active)}</span>
-            <div><div className="tn">{active ? active.name : "…"}{active?.status === "deceased" && <span className="mem">In memory</span>}</div><div className="tp">{active?.persona || "Chat with this personality's videos"}</div></div>
-          </div>
-          <div className="thbtns">
-            {active && (active.publish_status === "published"
-              ? <span className="pubbadge pub"><Icon name="check" size={13} /> Published</span>
-              : active.publish_status === "pending"
-                ? <span className="pubbadge pend">Pending review</span>
-                : <button className="btn ghost" onClick={publishPersonality} title="Submit for review to appear in the public gallery"><Icon name="globe" size={15} /> Publish</button>)}
-            <button className="btn ghost" onClick={() => { loadVideos(activeId); setVideosOpen(true); }}><Icon name="video" size={15} /> Knowledge{videos.length ? ` · ${videos.length}` : ""}</button>
-            <button className="btn" onClick={() => { setJob(null); setAddOpen(true); }}><Icon name="plus" size={15} /> Add video</button>
-          </div>
-        </header>
-
-        <section className="pane">
-          <div className="chat">
-            {msgs.length === 0 && <div className="empty"><span className="eav">{active?.image_url ? <img src={active.image_url} alt="" /> : initial(active)}</span><div className="et">Chat with {active?.name || "personality"}</div><div className="es">Ask anything about their videos — cited answers in any language.</div></div>}
-            {msgs.map((m, i) => (
-              <div key={i} className={"msg " + m.who}>
-                <span className={"av " + m.who}>{m.who === "ai" ? <Icon name="bot" size={14} /> : <Icon name="user" size={14} />}</span>
-                <div className="mw"><div className="bub">{m.typing ? <span className="typ"><i /><i /><i /></span> : (m.who === "ai" ? <Markdown text={m.text} /> : m.text)}</div>{m.refs?.length > 0 && <div className="refs">{m.refs.slice(0, 4).map((r) => <span key={r.n} className="ref">[{r.n}] {(r.source || "").slice(0, 36)}</span>)}</div>}</div>
+            {/* Wallet */}
+            <div className="mb-6 px-2">
+              <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant">
+                <div className="flex justify-between items-center mb-2">
+                  <MonoLabel className="text-on-surface-variant">Wallet Balance</MonoLabel>
+                  <MatIcon name="account_balance_wallet" className="text-primary text-sm" />
+                </div>
+                <div className="text-headline-sm font-headline-sm font-bold mb-3">
+                  {wallet == null ? "PKR —" : `PKR ${Number(wallet).toLocaleString()}`}
+                </div>
+                <button
+                  className="w-full py-2 bg-primary text-on-primary font-mono-label text-mono-label uppercase tracking-widest hover:opacity-90 transition-opacity"
+                  onClick={() => setTopupOpen(true)}
+                >
+                  Top Up PKR
+                </button>
               </div>
-            ))}
-            <div ref={end} />
-          </div>
-          <div className="comp"><input className="cin" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && ask()} placeholder={`Message ${active?.name || "personality"}…`} /><button className="cs" onClick={ask} disabled={busy}><Icon name="send" size={15} /></button></div>
-        </section>
-      </main>
+            </div>
 
-      {videosOpen && (
-        <div className="mbg" onClick={() => setVideosOpen(false)}>
-          <div className="modal wide" onClick={(e) => e.stopPropagation()}>
-            <div className="mh"><b>Knowledge · {active?.name}</b><button className="x" onClick={() => setVideosOpen(false)}><Icon name="close" size={17} /></button></div>
-            {videos.length === 0 ? (
-              <div className="empty" style={{ padding: "26px 0" }}><Icon name="video" size={30} /><div className="et" style={{ marginTop: 12 }}>No videos yet</div><div className="es">Add a YouTube video to this personality.</div><button className="btn" style={{ marginTop: 16 }} onClick={() => { setVideosOpen(false); setJob(null); setAddOpen(true); }}><Icon name="plus" size={15} /> Add video</button></div>
-            ) : (
-              <div className="vtblwrap" style={{ overflowY: "auto" }}>
-                <table className="vtbl">
-                  <thead><tr><th>Video</th><th>Added</th><th>Chunks</th><th className="ta-r">Actions</th></tr></thead>
-                  <tbody>
-                    {videos.map((v) => (
-                      <tr key={v.id}>
-                        <td><div className="vtc"><span className="vth"><Icon name="video" size={15} /></span><span className="vt">{v.title}</span></div></td>
-                        <td className="mut">{timeAgo(v.created_at)}</td>
-                        <td className="mut">{v.chunks}</td>
-                        <td className="ta-r"><div className="vact">
-                          <button className="vbtn" onClick={() => openChunks(v)}><Icon name="eye" size={14} /> View</button>
-                          {v.url && <a className="vico" href={v.url} target="_blank" rel="noreferrer" title="Open source"><Icon name="link" size={15} /></a>}
-                          <button className="vico" title="Re-process whole video" onClick={() => process(v.url, true)}><Icon name="refresh" size={15} /></button>
-                        </div></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+            {/* Search */}
+            <div className="relative mb-4 px-2">
+              <MatIcon name="search" className="absolute left-5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]" />
+              <input
+                className="w-full pl-10 pr-4 py-2 bg-surface-container rounded-lg border-none outline-none focus:ring-1 focus:ring-primary font-body-md text-sm"
+                placeholder="Search Personalities..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
 
-      {addOpen && (
-        <div className="mbg" onClick={() => setAddOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="mh"><b>Add a video</b><button className="x" onClick={() => setAddOpen(false)}><Icon name="close" size={17} /></button></div>
-            <input className="in big" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://youtube.com/watch?v=…  or a channel" />
-            <div className="mrow"><button className="btn ghost" onClick={estimate}>Estimate</button><button className="btn" onClick={() => process()} disabled={submitting}>{submitting ? "Processing…" : "Process"}</button></div>
-            {est && !est.loading && !est.error && <div className="mest"><span><b>{est.count}</b> video</span><span><b>{est.total_minutes}</b> min</span><span className="c"><b>${est.est_cost_usd}</b> cost</span></div>}
-            {est?.loading && <div className="mest mut">Scanning…</div>}
-            {est?.error && <div className="mest err"><Icon name="alert" size={14} /> {est.error}</div>}
-            {job && (
-              <div className="steps">
-                {STAGES.map((s, i) => {
-                  const st = stage === STAGES.length ? "done" : stage === -2 ? (i === 0 ? "err" : "pend") : i < stage ? "done" : i === stage ? "active" : "pend";
-                  return (
-                    <div key={s} className={"stp " + st}>
-                      <span className="sdot">{st === "done" ? <Icon name="check" size={12} /> : st === "err" ? <Icon name="alert" size={12} /> : st === "active" ? <span className="sp" /> : <span className="pd" />}</span>
-                      <span className="slb">{s}</span>
+            {/* Personalities */}
+            <nav className="flex-1 overflow-y-auto custom-scrollbar px-2 py-1">
+              <MonoLabel className="text-on-surface-variant mb-2 block">Personalities</MonoLabel>
+              {spaces.filter((s) => s.name.toLowerCase().includes(search.toLowerCase())).map((s) => {
+                const dead = s.status === "deceased";
+                const on = s.id === activeId;
+                return (
+                  <div
+                    key={s.id}
+                    className={`${on ? "active-persona" : "hover:bg-surface-container-low"} group flex items-center gap-3 p-3 cursor-pointer transition-colors duration-200`}
+                    onClick={() => setActiveId(s.id)}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <Avatar name={s.name} image={s.image_url} grayscale={dead} className={`w-10 h-10 ${dead ? "opacity-80" : ""}`} textClass="text-base" />
+                    <div className="flex-1 min-w-0">
+                      <p className={`truncate ${on ? "font-bold text-primary" : "font-medium text-secondary"}`}>{s.name}</p>
+                      <p className={`text-xs text-on-surface-variant ${dead ? "italic" : ""}`}>
+                        {dead ? "In Memory" : "Alive"} · {s.videos} {s.videos === 1 ? "video" : "videos"}
+                      </p>
                     </div>
-                  );
-                })}
-                {job.status === "done" && <div className="sdone"><Icon name="check" size={13} /> Ready to chat</div>}
-                {job.status === "error" && <div className="serr">{job.error}</div>}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+                    {!dead && <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />}
+                    <button
+                      className="opacity-0 group-hover:opacity-100 text-on-surface-variant hover:text-error transition-all p-1 shrink-0"
+                      title="Delete personality"
+                      onClick={(e) => { e.stopPropagation(); deletePersonality(s); }}
+                    >
+                      <MatIcon name="delete" className="text-[18px]" />
+                    </button>
+                  </div>
+                );
+              })}
+              <button
+                className="w-full flex items-center gap-3 p-3 mt-1 border border-dashed border-outline-variant text-secondary hover:text-primary hover:border-primary transition-colors"
+                onClick={() => setPOpen(true)}
+              >
+                <MatIcon name="person_add" className="text-[20px]" />
+                <span className="font-body-md text-sm">New Personality</span>
+              </button>
+            </nav>
 
-      {cm && (
-        <div className="mbg" onClick={() => setCm(null)}>
-          <div className="modal wide" onClick={(e) => e.stopPropagation()}>
-            <div className="mh"><b>Chunks · {cm.video.title}</b><button className="x" onClick={() => setCm(null)}><Icon name="close" size={17} /></button></div>
-            {cm.chunks == null ? (
-              <div className="mest mut">Loading chunks…</div>
-            ) : cm.chunks.length === 0 ? (
-              <div className="mest mut">Is video ke koi chunks nahi mile.</div>
-            ) : (
-              <div className="clist">
-                {cm.chunks.map((k) => (
-                  <div key={k.id} className="citem">
-                    <div className="cidx">#{(k.idx ?? 0) + 1}</div>
-                    <textarea className="cta" value={k.text} onChange={(e) => editChunkText(k.id, e.target.value)} />
-                    <div className="cact">
-                      <button className="vbtn" disabled={cm.busyId === k.id || !k.dirty} onClick={() => saveChunk(cm.video, k)}>{cm.busyId === k.id ? "Saving…" : "Save + re-embed"}</button>
-                      <button className="vico danger" title="Delete chunk" disabled={cm.busyId === k.id} onClick={() => deleteChunk(cm.video, k)}><Icon name="trash" size={15} /></button>
+            {/* Footer */}
+            <div className="mt-auto pt-4 border-t border-outline-variant px-2 space-y-1">
+              <a href="/explore" className="flex items-center gap-3 p-2 text-secondary hover:text-primary cursor-pointer transition-all no-underline">
+                <MatIcon name="language" />
+                <span className="font-body-md text-sm">Explore the Archive</span>
+              </a>
+              <div className="flex items-center gap-3 p-2 text-secondary">
+                <UserButton afterSignOutUrl="/" />
+                <span className="font-body-md text-sm">Account</span>
+              </div>
+            </div>
+          </aside>
+
+          {/* ------------------------------------------------ Main */}
+          <main className="flex-1 flex flex-col relative overflow-hidden bg-white min-w-0">
+            {/* Top bar */}
+            <header className="flex justify-between items-center w-full px-6 lg:px-margin-desktop h-16 bg-surface-container-lowest border-b border-outline-variant shadow-sm z-10 shrink-0 gap-4">
+              <div className="flex items-center gap-4 min-w-0">
+                <Avatar name={active?.name} image={active?.image_url} grayscale={active?.status === "deceased"} className="w-8 h-8" textClass="text-sm" />
+                <div className="min-w-0">
+                  <h2 className="font-headline-sm text-headline-sm text-primary leading-none truncate">{active ? active.name : "…"}</h2>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${active?.status === "deceased" ? "bg-outline" : "bg-emerald-500"}`} />
+                    <span className="text-[10px] font-mono-label uppercase tracking-widest text-on-surface-variant truncate">
+                      {active?.status === "deceased" ? "In Memory / Archive" : "Alive / Streaming"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 shrink-0">
+                <div className="flex gap-2">
+                  <button
+                    className="px-4 py-1.5 border border-outline-variant hover:bg-surface-container-low transition-all text-sm font-medium flex items-center gap-2 active:scale-95"
+                    onClick={() => { setJob(null); setAddOpen(true); }}
+                  >
+                    <MatIcon name="video_call" className="text-sm" />
+                    <span className="hidden sm:inline">Add Video</span>
+                  </button>
+                  <button
+                    className="px-4 py-1.5 border border-outline-variant hover:bg-surface-container-low transition-all text-sm font-medium flex items-center gap-2 active:scale-95"
+                    onClick={() => { loadVideos(activeId); setVideosOpen(true); }}
+                  >
+                    <MatIcon name="library_books" className="text-sm" />
+                    <span className="hidden sm:inline">Knowledge{videos.length ? ` · ${videos.length}` : ""}</span>
+                  </button>
+                  {active && (active.publish_status === "published" ? (
+                    <span className="px-4 py-1.5 border border-outline-variant text-sm font-medium flex items-center gap-2 text-secondary">
+                      <MatIcon name="check_circle" className="text-sm" /> <span className="hidden sm:inline">Published</span>
+                    </span>
+                  ) : active.publish_status === "pending" ? (
+                    <span className="px-4 py-1.5 border border-outline-variant text-sm font-medium flex items-center gap-2 text-secondary">
+                      <MatIcon name="hourglass_empty" className="text-sm" /> <span className="hidden sm:inline">Pending Review</span>
+                    </span>
+                  ) : (
+                    <button
+                      className="px-5 py-1.5 bg-primary text-on-primary hover:opacity-90 transition-all text-sm font-medium flex items-center gap-2 active:scale-95"
+                      onClick={publishPersonality}
+                      title="Submit for review to appear in the public gallery"
+                    >
+                      <MatIcon name="publish" className="text-sm" />
+                      <span className="hidden sm:inline">Publish</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </header>
+
+            {/* Chat canvas */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-margin-desktop">
+              <div className="max-w-[800px] mx-auto space-y-12">
+                {msgs.length === 0 && (
+                  <div className="pt-16 text-center">
+                    <Avatar name={active?.name} image={active?.image_url} className="w-16 h-16 mx-auto mb-6" textClass="text-2xl" />
+                    <p className="font-display-lg text-display-lg-mobile text-primary mb-3">
+                      Inquire of {active?.name || "the archive"}.
+                    </p>
+                    <p className="font-body-md text-body-md text-on-surface-variant max-w-md mx-auto">
+                      {active?.persona || "Ask anything about their videos — cited answers in any language."}
+                    </p>
+                  </div>
+                )}
+                {msgs.map((m, i) =>
+                  m.who === "user"
+                    ? <UserMsg key={i} text={m.text} />
+                    : <AiMsg key={i} text={m.text} refs={m.refs} typing={m.typing} />
+                )}
+                <div ref={end} />
+              </div>
+            </div>
+
+            {/* Composer */}
+            <Composer
+              value={q}
+              onChange={setQ}
+              onSend={ask}
+              busy={busy}
+              placeholder={`Ask ${active?.name || "the archive"}...`}
+            />
+          </main>
+
+          {/* ------------------------------------------------ Knowledge modal */}
+          {videosOpen && (
+            <Modal wide onClose={() => setVideosOpen(false)}>
+              <ModalHead kicker={active?.name} title="Knowledge Base" onClose={() => setVideosOpen(false)} />
+              <div className="px-8 pb-2 flex items-end justify-between gap-6 shrink-0">
+                <p className="font-body-md text-body-md text-on-surface-variant max-w-md">
+                  Every chunk is a vetted fragment that informs the <span className="italic">{active?.name}</span> persona.
+                </p>
+                <div className="flex gap-6 shrink-0">
+                  <div className="text-right">
+                    <MonoLabel className="block text-on-surface-variant opacity-60">Total Chunks</MonoLabel>
+                    <span className="text-headline-sm font-headline-sm text-primary">{totalChunks.toLocaleString()}</span>
+                  </div>
+                  <div className="text-right">
+                    <MonoLabel className="block text-on-surface-variant opacity-60">Source Videos</MonoLabel>
+                    <span className="text-headline-sm font-headline-sm text-primary">{videos.length}</span>
+                  </div>
+                </div>
+              </div>
+              {videos.length === 0 ? (
+                <div className="px-8 py-14 text-center">
+                  <MatIcon name="library_books" className="text-4xl text-outline" />
+                  <p className="font-headline-sm text-headline-sm mt-4 mb-1">The archive is empty</p>
+                  <p className="font-body-md text-body-md text-on-surface-variant mb-6">Ingest a YouTube video to give this personality knowledge.</p>
+                  <button
+                    className="bg-primary text-on-primary px-6 py-2 font-bold hover:opacity-90 active:scale-95 transition-all text-sm inline-flex items-center gap-2"
+                    onClick={() => { setVideosOpen(false); setJob(null); setAddOpen(true); }}
+                  >
+                    <MatIcon name="upload" className="text-sm" /> INGEST NEW SOURCE
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="mx-8 mt-4 mb-2 overflow-y-auto custom-scrollbar border border-outline-variant bg-surface-container-lowest">
+                    <table className="w-full border-collapse text-left">
+                      <thead>
+                        <tr className="bg-surface-container-low border-b border-outline-variant">
+                          <th className="px-6 py-4 font-mono-label text-on-surface-variant uppercase tracking-widest text-[10px] font-semibold">Source Identity &amp; Title</th>
+                          <th className="px-6 py-4 font-mono-label text-on-surface-variant uppercase tracking-widest text-[10px] font-semibold">Archived</th>
+                          <th className="px-6 py-4 font-mono-label text-on-surface-variant uppercase tracking-widest text-[10px] font-semibold">Semantic Chunks</th>
+                          <th className="px-6 py-4 font-mono-label text-on-surface-variant uppercase tracking-widest text-[10px] font-semibold text-right">Laboratory Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-outline-variant/30">
+                        {videos.map((v) => (
+                          <tr key={v.id} className="hover:bg-surface-container-low/50 transition-colors group">
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-4">
+                                <div className="w-16 h-10 bg-surface-container-high relative overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                  <MatIcon name="smart_display" className="text-on-surface-variant" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-headline-sm text-base text-primary truncate max-w-[260px]">{v.title}</p>
+                                  <p className="font-citation text-citation text-on-surface-variant opacity-60">Source ID: {v.yt_id}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <span className="text-on-surface-variant font-mono-label text-mono-label uppercase">{timeAgo(v.created_at)}</span>
+                            </td>
+                            <td className="px-6 py-4 align-middle">
+                              <div className="flex items-center gap-2">
+                                <span className="text-primary font-bold">{v.chunks}</span>
+                                <div className="h-1 w-24 bg-surface-container-high rounded-full overflow-hidden">
+                                  <div className="h-full bg-primary" style={{ width: `${Math.round(((Number(v.chunks) || 0) / maxChunks) * 100)}%` }} />
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-right whitespace-nowrap">
+                              <button className="opacity-60 hover:opacity-100 hover:bg-surface-container text-on-surface p-2 transition-all" title="View & edit chunks" onClick={() => openChunks(v)}>
+                                <MatIcon name="segment" className="text-[20px]" />
+                              </button>
+                              {v.url && (
+                                <a className="inline-block opacity-60 hover:opacity-100 hover:bg-surface-container text-on-surface p-2 transition-all" href={v.url} target="_blank" rel="noreferrer" title="Open source">
+                                  <MatIcon name="open_in_new" className="text-[20px]" />
+                                </a>
+                              )}
+                              <button className="opacity-60 hover:opacity-100 hover:bg-surface-container text-primary p-2 transition-all" title="Re-process whole video" onClick={() => process(v.url, true)}>
+                                <MatIcon name="refresh" className="text-[20px]" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="px-8 py-4 flex justify-end shrink-0">
+                    <button
+                      className="bg-primary text-on-primary px-6 py-2 font-bold hover:opacity-90 active:scale-95 transition-all text-sm flex items-center gap-2"
+                      onClick={() => { setVideosOpen(false); setJob(null); setAddOpen(true); }}
+                    >
+                      <MatIcon name="upload" className="text-sm" /> INGEST NEW SOURCE
+                    </button>
+                  </div>
+                </>
+              )}
+            </Modal>
+          )}
+
+          {/* ------------------------------------------------ Add video modal */}
+          {addOpen && (
+            <Modal onClose={() => setAddOpen(false)}>
+              <ModalHead kicker="Expand the archive" title="Ingest Source Material" onClose={() => setAddOpen(false)} />
+              <div className="px-8 pb-8 overflow-y-auto custom-scrollbar">
+                <p className="font-body-md text-body-md text-on-surface-variant mb-6">
+                  Feed this Persona high-quality video content — a single video or a whole channel.
+                </p>
+                <label className="block font-mono-label text-mono-label text-secondary mb-2 uppercase tracking-widest">
+                  YouTube Playlist or Video URL
+                </label>
+                <div className="relative flex items-center mb-4">
+                  <MatIcon name="link" className="absolute left-4 text-outline" />
+                  <input
+                    className="w-full bg-white border border-outline-variant pl-12 pr-28 py-4 outline-none focus:ring-1 focus:ring-primary focus:border-primary font-body-md text-sm"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://youtube.com/watch?v=…  or a channel"
+                  />
+                  <button
+                    className="absolute right-2 bg-primary text-on-primary px-5 py-2 font-bold hover:opacity-90 transition-opacity text-sm"
+                    onClick={estimate}
+                  >
+                    Analyze
+                  </button>
+                </div>
+
+                {est?.loading && <p className="font-citation text-citation text-on-surface-variant mb-4">Scanning the source…</p>}
+                {est?.error && (
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="bg-error-container text-on-error-container px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Note</span>
+                    <p className="font-citation text-citation text-on-surface-variant">{est.error}</p>
+                  </div>
+                )}
+                {est && !est.loading && !est.error && (
+                  <div className="glass-lab p-6 border-l-4 border-l-tertiary mb-6">
+                    <h3 className="font-headline-sm text-headline-sm text-primary mb-1">Transcription Estimate</h3>
+                    <p className="font-citation text-citation text-on-surface-variant mb-6">Calculated from the source's length and content depth.</p>
+                    <div className="grid grid-cols-3 gap-6">
+                      <div className="space-y-1">
+                        <MonoLabel className="text-secondary">Volume</MonoLabel>
+                        <p className="font-display-lg text-display-lg-mobile text-primary">
+                          {est.count} <span className="text-body-md font-normal font-sans">video{est.count === 1 ? "" : "s"}</span>
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <MonoLabel className="text-secondary">Duration</MonoLabel>
+                        <p className="font-display-lg text-display-lg-mobile text-primary">
+                          {est.total_minutes} <span className="text-body-md font-normal font-sans">min</span>
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <MonoLabel className="text-secondary">Est. Cost</MonoLabel>
+                        <p className="font-display-lg text-display-lg-mobile text-primary">
+                          ${est.est_cost_usd} <span className="text-body-md font-normal font-sans">USD</span>
+                        </p>
+                      </div>
                     </div>
                   </div>
-                ))}
+                )}
+
+                <div className="flex items-center gap-6">
+                  <button
+                    className="bg-primary text-on-primary px-8 py-4 font-bold flex items-center gap-3 transition-all active:scale-95 shadow-lg disabled:opacity-50"
+                    onClick={() => process()}
+                    disabled={submitting}
+                  >
+                    {submitting ? "Processing…" : "Confirm & Start Processing"} <MatIcon name="bolt" />
+                  </button>
+                </div>
+
+                <div className="border-l-2 border-primary pl-6 py-4 mt-6">
+                  <p className="font-citation text-citation italic text-secondary mb-1">Technical Prerequisite</p>
+                  <p className="font-body-md text-sm text-on-surface">
+                    "The act of digital preservation requires a dedicated computational environment." Ensure the{" "}
+                    <strong>Persona Desktop Client</strong> is active — a browser can't download from YouTube.
+                  </p>
+                </div>
+
+                {/* Stage timeline (Video Processing screen) */}
+                {job && (
+                  <div className="mt-8">
+                    <MonoLabel className="text-on-surface-variant mb-6 block">Stage Timeline</MonoLabel>
+                    <div className="space-y-6 relative">
+                      <div className="absolute left-[11px] top-2 bottom-2 w-[2px] bg-outline-variant" />
+                      {STAGES.map((s, i) => {
+                        const st = stage === STAGES.length ? "done" : stage === -2 ? (i === 0 ? "err" : "pend") : i < stage ? "done" : i === stage ? "active" : "pend";
+                        return (
+                          <div key={s} className={`flex gap-4 relative z-10 ${st === "pend" ? "opacity-50" : ""}`}>
+                            {st === "done" ? (
+                              <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center shrink-0">
+                                <MatIcon name="check" className="text-sm" />
+                              </div>
+                            ) : st === "err" ? (
+                              <div className="w-6 h-6 rounded-full bg-error text-white flex items-center justify-center shrink-0">
+                                <MatIcon name="priority_high" className="text-sm" />
+                              </div>
+                            ) : st === "active" ? (
+                              <div className="w-6 h-6 rounded-full bg-white border-2 border-primary flex items-center justify-center shrink-0">
+                                <span className="w-2 h-2 bg-primary rounded-full animate-ping" />
+                              </div>
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-surface-container-highest border border-outline-variant shrink-0" />
+                            )}
+                            <div>
+                              <p className={`font-bold ${st === "active" ? "text-primary" : st === "pend" ? "text-on-surface-variant" : "text-on-surface"}`}>{s}</p>
+                              <p className={`font-citation text-citation ${st === "active" ? "text-primary italic" : "text-on-surface-variant"}`}>
+                                {st === "done" ? "Status: Done" : st === "active" ? (job.step || "In-progress…") : st === "err" ? "Failed" : "Pending"}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {job.status === "done" && (
+                      <div className="bg-primary text-on-primary py-3 px-4 mt-6 flex items-center gap-3">
+                        <MatIcon name="cloud_done" />
+                        <span className="font-headline-sm text-base">Processing Complete — ready to chat.</span>
+                      </div>
+                    )}
+                    {job.status === "error" && (
+                      <div className="border-l-2 border-error pl-4 py-2 mt-6">
+                        <p className="font-mono-label text-mono-label uppercase tracking-widest text-error mb-1">Error</p>
+                        <p className="font-body-md text-sm text-on-surface">{job.error}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </div>
-      )}
+            </Modal>
+          )}
 
-      {pOpen && (
-        <div className="mbg" onClick={() => setPOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="mh"><b>New personality</b><button className="x" onClick={() => setPOpen(false)}><Icon name="close" size={17} /></button></div>
-            <div className="pup">
-              <label className="pupload" title="Upload photo">
-                {pForm.image_url ? <img src={pForm.image_url} alt="" /> : <><Icon name="camera" size={19} /><span>Photo</span></>}
-                <input type="file" accept="image/*" hidden onChange={(e) => pickImage(e.target.files?.[0])} />
-              </label>
-              <div className="pufields">
-                <input autoFocus className="in big" placeholder="Name (e.g. Sahil Adeem)" value={pForm.name} onChange={(e) => setPForm({ ...pForm, name: e.target.value })} onKeyDown={(e) => e.key === "Enter" && createPersonality()} />
-                <div className="puhint">Tap the circle to upload a photo (optional)</div>
+          {/* ------------------------------------------------ Chunk editor modal */}
+          {cm && (
+            <Modal wide onClose={() => setCm(null)}>
+              <ModalHead kicker={`Source: ${cm.video.yt_id}`} title={cm.video.title} onClose={() => setCm(null)} />
+              <div className="px-8 pb-2 flex items-center gap-4 shrink-0">
+                <MonoLabel className="text-primary">{cm.chunks ? `${cm.chunks.length} chunks` : "Loading…"}</MonoLabel>
+                <div className="h-4 w-px bg-outline-variant" />
+                <span className="text-secondary text-citation font-citation flex items-center gap-1">
+                  <MatIcon name="check_circle" className="text-[14px]" /> Edits re-embed instantly
+                </span>
               </div>
-            </div>
-            <input className="in big" style={{ marginTop: 10 }} placeholder="Persona / tone (optional, e.g. Warm scholar)" value={pForm.persona} onChange={(e) => setPForm({ ...pForm, persona: e.target.value })} />
-            <div className="seg" style={{ marginTop: 10 }}>
-              <button className={pForm.status === "alive" ? "on" : ""} onClick={() => setPForm({ ...pForm, status: "alive" })}>Alive</button>
-              <button className={pForm.status === "deceased" ? "on" : ""} onClick={() => setPForm({ ...pForm, status: "deceased" })}>Deceased</button>
-            </div>
-            <div className="mrow"><button className="btn ghost" onClick={() => setPOpen(false)}>Cancel</button><button className="btn" onClick={createPersonality} disabled={creating}>{creating ? "Creating…" : "Create personality"}</button></div>
-          </div>
-        </div>
-      )}
+              <div className="flex-1 overflow-y-auto custom-scrollbar px-8 py-4 space-y-4">
+                {cm.chunks == null ? (
+                  <p className="font-citation text-citation text-on-surface-variant">Loading chunks…</p>
+                ) : cm.chunks.length === 0 ? (
+                  <p className="font-citation text-citation text-on-surface-variant">Is video ke koi chunks nahi mile.</p>
+                ) : (
+                  cm.chunks.map((k) => (
+                    <div key={k.id} className={`border p-5 bg-white transition-all ${k.dirty ? "border-primary ring-1 ring-primary shadow-lg" : "border-outline-variant hover:border-primary/50"}`}>
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex items-center gap-3">
+                          <span className={`px-2 py-0.5 font-mono-label text-[10px] ${k.dirty ? "bg-primary text-on-primary" : "bg-surface-container-highest text-secondary"}`}>
+                            {k.dirty ? "EDITED" : `#${String((k.idx ?? 0) + 1).padStart(3, "0")}`}
+                          </span>
+                        </div>
+                        <div className="flex gap-3">
+                          <button
+                            className="text-secondary hover:text-primary flex items-center gap-1 text-citation font-citation disabled:opacity-40"
+                            disabled={cm.busyId === k.id || !k.dirty}
+                            onClick={() => saveChunk(cm.video, k)}
+                          >
+                            <MatIcon name="save" className="text-[16px]" /> {cm.busyId === k.id ? "Saving…" : "Save & re-embed"}
+                          </button>
+                          <button
+                            className="text-error hover:opacity-70 flex items-center gap-1 text-citation font-citation disabled:opacity-40"
+                            disabled={cm.busyId === k.id}
+                            onClick={() => deleteChunk(cm.video, k)}
+                          >
+                            <MatIcon name="delete" className="text-[16px]" /> Delete
+                          </button>
+                        </div>
+                      </div>
+                      <textarea
+                        className="w-full font-body-md text-[15px] text-on-surface border-none outline-none focus:ring-0 leading-relaxed resize-vertical min-h-[72px] bg-transparent"
+                        value={k.text}
+                        onChange={(e) => editChunkText(k.id, e.target.value)}
+                      />
+                    </div>
+                  ))
+                )}
+              </div>
+            </Modal>
+          )}
 
-      {topupOpen && (
-        <div className="mbg" onClick={() => setTopupOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="mh"><b>Add funds</b><button className="x" onClick={() => setTopupOpen(false)}><Icon name="close" size={17} /></button></div>
-            <div className="puhint" style={{ marginBottom: 12 }}>Balance: <b style={{ color: "#1f2430" }}>Rs {wallet == null ? "—" : Number(wallet).toLocaleString()}</b></div>
-            <div className="amts">
-              {[200, 500, 1000, 2000].map((a) => (
-                <button key={a} className="amt" disabled={topupBusy} onClick={() => startTopup(a)}>Rs {a.toLocaleString()}</button>
-              ))}
-            </div>
-            <div className="mrow">
-              <input className="in big" type="number" placeholder="Custom (PKR)" value={custom} onChange={(e) => setCustom(e.target.value)} style={{ flex: 1 }} />
-              <button className="btn" disabled={topupBusy || !custom} onClick={() => startTopup(custom)}>{topupBusy ? "…" : "Pay"}</button>
-            </div>
-            <div className="puhint" style={{ marginTop: 10 }}>Secure payment via Stripe · test mode</div>
-          </div>
-        </div>
-      )}
+          {/* ------------------------------------------------ New personality modal */}
+          {pOpen && (
+            <Modal onClose={() => setPOpen(false)}>
+              <ModalHead kicker="Define a new voice" title="Ingest New Personality" onClose={() => setPOpen(false)} />
+              <div className="px-8 pb-8 overflow-y-auto custom-scrollbar space-y-8">
+                <div>
+                  <h3 className="font-headline-sm text-headline-sm mb-1">Identity &amp; Image</h3>
+                  <p className="citation-line pl-4 font-citation text-citation text-on-surface-variant mb-4">
+                    Upload a visual representation. Square format preferred for archival consistency.
+                  </p>
+                  <div className="flex items-center gap-6">
+                    <label className="relative group cursor-pointer shrink-0">
+                      <div className="w-28 h-28 rounded-xl bg-surface-container border-2 border-dashed border-outline-variant flex flex-col items-center justify-center overflow-hidden group-hover:border-primary transition-colors">
+                        {pForm.image_url ? (
+                          <img src={pForm.image_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <>
+                            <MatIcon name="add_a_photo" className="text-outline text-[36px]" />
+                            <span className="text-[10px] uppercase tracking-widest font-bold text-outline mt-2">Upload</span>
+                          </>
+                        )}
+                      </div>
+                      <input type="file" accept="image/*" hidden onChange={(e) => pickImage(e.target.files?.[0])} />
+                    </label>
+                    <div className="flex-1">
+                      <label className="block font-mono-label text-mono-label text-secondary mb-2 uppercase tracking-widest">Full Archival Name</label>
+                      <input
+                        autoFocus
+                        className="w-full bg-white border border-outline-variant rounded-lg py-3 px-4 outline-none focus:ring-2 focus:ring-primary focus:border-primary font-body-md text-sm"
+                        placeholder="e.g. Sahil Adeem"
+                        value={pForm.name}
+                        onChange={(e) => setPForm({ ...pForm, name: e.target.value })}
+                        onKeyDown={(e) => e.key === "Enter" && createPersonality()}
+                      />
+                    </div>
+                  </div>
+                </div>
 
-      <style jsx>{STYLES}</style>
-    </div>
+                <hr className="border-outline-variant opacity-50" />
+
+                <div>
+                  <h3 className="font-headline-sm text-headline-sm mb-1">Cognitive Logic</h3>
+                  <p className="citation-line pl-4 font-citation text-citation text-on-surface-variant mb-4">
+                    Describe the linguistic framework — this dictates the persona's tone of reply.
+                  </p>
+                  <label className="block font-mono-label text-mono-label text-secondary mb-2 uppercase tracking-widest">Persona &amp; Tone Description (optional)</label>
+                  <textarea
+                    className="w-full bg-white border border-outline-variant rounded-lg py-3 px-4 outline-none focus:ring-2 focus:ring-primary focus:border-primary font-body-md text-sm min-h-[88px] resize-vertical"
+                    placeholder="e.g. Analytic and firm. Speaks in short, declarative sentences, avoids contemporary slang."
+                    value={pForm.persona}
+                    onChange={(e) => setPForm({ ...pForm, persona: e.target.value })}
+                  />
+                </div>
+
+                <hr className="border-outline-variant opacity-50" />
+
+                <div>
+                  <h3 className="font-headline-sm text-headline-sm mb-1">Temporal Status</h3>
+                  <div className="bg-surface-container p-5 rounded-xl flex items-center justify-between mt-4">
+                    <div>
+                      <p className="font-body-md font-bold text-primary mb-0.5">{pForm.status === "alive" ? "Active / Alive" : "In Memory"}</p>
+                      <p className="font-citation text-citation text-secondary">Toggle off for historical personalities from the archive.</p>
+                    </div>
+                    <div className="relative inline-block w-14 h-8 align-middle select-none shrink-0">
+                      <input
+                        type="checkbox"
+                        id="temporal-toggle"
+                        checked={pForm.status === "alive"}
+                        onChange={(e) => setPForm({ ...pForm, status: e.target.checked ? "alive" : "deceased" })}
+                        className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-2 border-outline-variant appearance-none cursor-pointer top-1 left-1 checked:left-7 transition-all"
+                      />
+                      <label htmlFor="temporal-toggle" className="toggle-label block overflow-hidden h-8 rounded-full bg-outline-variant/40 cursor-pointer" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center justify-between gap-6">
+                  <div className="flex items-center gap-2 text-secondary min-w-0">
+                    <MatIcon name="lock" className="text-[18px]" />
+                    <span className="text-[11px] font-mono-label uppercase tracking-widest truncate">Private until you publish</span>
+                  </div>
+                  <div className="flex gap-3 shrink-0">
+                    <button className="px-6 py-3 rounded-lg border border-outline-variant text-primary font-bold hover:bg-surface-container transition-colors" onClick={() => setPOpen(false)}>
+                      Discard
+                    </button>
+                    <button
+                      className="px-8 py-3 rounded-lg bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all disabled:opacity-50"
+                      onClick={createPersonality}
+                      disabled={creating}
+                    >
+                      {creating ? "Creating…" : "Create Personality"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </Modal>
+          )}
+
+          {/* ------------------------------------------------ Top-up modal */}
+          {topupOpen && (
+            <Modal onClose={() => setTopupOpen(false)}>
+              <ModalHead kicker="Modern archive wallet" title="Top Up Funds" onClose={() => setTopupOpen(false)} />
+              <div className="px-8 pb-8 overflow-y-auto custom-scrollbar">
+                <div className="mb-8 border-b border-outline-variant pb-6">
+                  <h3 className="font-headline-sm text-base text-on-surface mb-1">Available Balance</h3>
+                  <p className="font-citation text-citation text-on-surface-variant mb-3">
+                    Secured for computational processing and persona interactions.
+                  </p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-display-lg text-display-lg-mobile text-primary tracking-tighter">
+                      {wallet == null ? "—" : Number(wallet).toLocaleString()}
+                    </span>
+                    <span className="font-headline-sm text-headline-sm text-secondary">PKR</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                  {[200, 500, 1000, 2000].map((a, i) => (
+                    <button
+                      key={a}
+                      className="group p-4 border border-outline-variant hover:border-primary hover:ring-1 hover:ring-primary transition-all flex flex-col items-center gap-1 bg-surface-container-lowest disabled:opacity-50"
+                      disabled={topupBusy}
+                      onClick={() => startTopup(a)}
+                    >
+                      <span className="font-citation text-citation text-secondary group-hover:text-primary transition-colors">Tier {["I", "II", "III", "IV"][i]}</span>
+                      <span className="font-headline-sm text-headline-sm text-primary">{a.toLocaleString()}</span>
+                      <span className="font-mono-label text-mono-label text-outline">PKR</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="p-5 bg-surface-container-low rounded border border-outline-variant">
+                  <label className="block font-mono-label text-mono-label uppercase tracking-widest text-secondary mb-3">Custom Allocation</label>
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-grow">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-headline-sm">Rs.</span>
+                      <input
+                        type="number"
+                        className="w-full bg-white border border-outline-variant pl-14 pr-4 py-3.5 font-headline-sm text-lg outline-none focus:border-primary focus:ring-0"
+                        placeholder="0"
+                        value={custom}
+                        onChange={(e) => setCustom(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      className="bg-stripe text-white px-6 py-3.5 font-bold hover:brightness-110 transition-all flex items-center gap-2 disabled:opacity-50 whitespace-nowrap"
+                      disabled={topupBusy || !custom}
+                      onClick={() => startTopup(custom)}
+                    >
+                      <MatIcon name="lock" className="text-[16px]" /> {topupBusy ? "…" : "Pay with Stripe"}
+                    </button>
+                  </div>
+                  <p className="font-citation text-citation text-on-surface-variant mt-3">
+                    Minimum Rs 50 · secure payment via Stripe (test mode).
+                  </p>
+                </div>
+              </div>
+            </Modal>
+          )}
+        </div>
       </SignedIn>
     </>
   );
 }
-
-const STYLES = `
-  * { box-sizing: border-box; }
-  .shell { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; background: #fff; color: #1f2430;
-    font: 13px/1.55 -apple-system, "Segoe UI", Roboto, Inter, sans-serif; }
-  .side { background: #fafbfc; border-right: 1px solid #edeef2; padding: 14px 10px; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
-  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; padding: 4px 6px 6px; }
-  .logo { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; background: linear-gradient(135deg, #7c5cff, #5b8cff); }
-  .lbl { font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #9aa0ac; padding: 12px 8px 6px; }
-  .plist { display: flex; flex-direction: column; gap: 2px; }
-  .prow { display: flex; align-items: center; gap: 9px; width: 100%; text-align: left; border: 0; background: transparent; cursor: pointer; color: #384152; padding: 7px 8px; border-radius: 7px; font: inherit; }
-  .prow:hover { background: #f0f1f5; }
-  .prow.on { background: #efeaff; color: #5b3df5; }
-  .pav { width: 26px; height: 26px; border-radius: 50%; flex: 0 0 26px; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #a78bfa, #7c5cff); overflow: hidden; }
-  .pav img, .thav img, .eav img { width: 100%; height: 100%; object-fit: cover; }
-  .pinfo { min-width: 0; display: flex; flex-direction: column; }
-  .pn { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pm { font-size: 11px; color: #9aa0ac; }
-  .prow.add { color: #8b90a0; font-size: 12.5px; }
-  .prow.add:hover { color: #7c5cff; }
-  .pinfo { flex: 1; }
-  .pdel { opacity: 0; flex: 0 0 auto; width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; color: #b0b4be; cursor: pointer; }
-  .prow:hover .pdel { opacity: 1; }
-  .pdel:hover { background: #fdecec; color: #e5484d; }
-  .vtblwrap { border: 1px solid #edeef2; border-radius: 12px; overflow: hidden; }
-  .vtbl { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .vtbl th { text-align: left; font-weight: 600; color: #8b90a0; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; padding: 10px 14px; background: #fafafb; border-bottom: 1px solid #edeef2; }
-  .vtbl td { padding: 11px 14px; border-bottom: 1px solid #f1f2f5; vertical-align: middle; }
-  .vtbl tr:last-child td { border-bottom: 0; }
-  .vtbl .ta-r { text-align: right; }
-  .vtbl .mut { color: #8b90a0; }
-  .vtc { display: flex; align-items: center; gap: 10px; }
-  .vth { width: 30px; height: 30px; border-radius: 7px; background: #efeaff; color: #7c5cff; display: grid; place-items: center; flex: 0 0 30px; }
-  .vt { font-weight: 500; color: #1f2430; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 340px; }
-  .vact { display: inline-flex; gap: 7px; align-items: center; justify-content: flex-end; }
-  .vbtn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #d3c9ff; background: #f6f3ff; color: #6a49f2; border-radius: 7px; padding: 6px 11px; font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer; }
-  .vbtn:hover { background: #efeaff; }
-  .vbtn:disabled { opacity: .5; cursor: default; }
-  .vico { width: 30px; height: 30px; border-radius: 7px; border: 1px solid #e8e9ee; background: #fff; color: #6b7180; display: grid; place-items: center; cursor: pointer; text-decoration: none; }
-  .vico:hover { color: #7c5cff; border-color: #d3c9ff; }
-  .vico.danger:hover { color: #e5484d; border-color: #f3b7b7; background: #fdecec; }
-  .modal.wide { max-width: 640px; max-height: 80vh; display: flex; flex-direction: column; }
-  .clist { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-top: 8px; padding-right: 4px; }
-  .citem { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: start; }
-  .cidx { font-size: 11px; color: #9aa0ac; font-weight: 600; padding-top: 9px; }
-  .cta { width: 100%; min-height: 58px; resize: vertical; border: 1px solid #e2e4ea; border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 12.5px; line-height: 1.5; color: #2b2f3a; }
-  .cta:focus { outline: none; border-color: #7c5cff; box-shadow: 0 0 0 2px rgba(124,92,255,.12); }
-  .cact { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
-  .npbox { padding: 8px; background: #fff; border: 1px solid #e8e9ee; border-radius: 8px; margin: 4px 0; display: flex; flex-direction: column; gap: 6px; }
-  .in { width: 100%; background: #fff; border: 1px solid #e2e4ea; border-radius: 6px; padding: 7px 9px; font: inherit; font-size: 12.5px; color: #1f2430; }
-  .in:focus { outline: none; border-color: #7c5cff; box-shadow: 0 0 0 2px rgba(124,92,255,.12); }
-  .in.big { font-size: 13.5px; padding: 9px 11px; }
-  .psearch { display: flex; align-items: center; gap: 7px; margin: 0 2px 6px; padding: 6px 9px; background: #fff; border: 1px solid #e8e9ee; border-radius: 7px; color: #9aa0ac; }
-  .psearch input { border: 0; background: transparent; outline: none; font: inherit; font-size: 12.5px; color: #1f2430; width: 100%; }
-  .pup { display: flex; gap: 13px; align-items: center; }
-  .pupload { width: 66px; height: 66px; border-radius: 50%; flex: 0 0 66px; display: grid; place-items: center; cursor: pointer; overflow: hidden; color: #8b90a0; background: #f4f5f8; border: 1px dashed #cdd1da; font-size: 9px; }
-  .pupload:hover { border-color: #7c5cff; color: #7c5cff; }
-  .pupload img { width: 100%; height: 100%; object-fit: cover; }
-  .pupload span { display: block; margin-top: 1px; }
-  .pufields { flex: 1; min-width: 0; }
-  .puhint { font-size: 11px; color: #9aa0ac; margin-top: 5px; }
-  .amts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-  .amt { border: 1px solid #e2e4ea; background: #fff; border-radius: 9px; padding: 13px 4px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; color: #1f2430; }
-  .amt:hover { border-color: #7c5cff; color: #5b3df5; background: #faf9ff; }
-  .amt:disabled { opacity: .5; }
-  .seg { display: flex; background: #f0f1f5; border-radius: 6px; padding: 2px; }
-  .seg button { flex: 1; border: 0; background: transparent; padding: 5px; font: inherit; font-size: 12px; border-radius: 5px; cursor: pointer; color: #6b7180; }
-  .seg button.on { background: #fff; color: #5b3df5; box-shadow: 0 1px 2px rgba(0,0,0,.06); font-weight: 600; }
-  .nprow { display: flex; gap: 6px; }
-  .nav { display: flex; flex-direction: column; gap: 2px; }
-  .ni { display: flex; align-items: center; gap: 9px; border: 0; background: transparent; cursor: pointer; color: #384152; padding: 7px 8px; border-radius: 7px; font: inherit; font-size: 13px; }
-  .ni:hover { background: #f0f1f5; }
-  .ni.on { background: #f0f1f5; font-weight: 600; }
-  .foot { margin-top: auto; padding-top: 12px; border-top: 1px solid #edeef2; display: flex; flex-direction: column; gap: 8px; }
-  .wal { display: flex; align-items: center; gap: 7px; font-size: 12.5px; background: #fff; border: 1px solid #e8e9ee; border-radius: 8px; padding: 7px 9px; }
-  .wal span { flex: 1; font-weight: 600; }
-  .tu { border: 0; background: #efeaff; color: #5b3df5; font: inherit; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; cursor: pointer; }
-  .ur { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #6b7180; padding: 2px; }
-  .btn { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 7px; padding: 8px 13px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; color: #fff; background: #7c5cff; }
-  .btn:hover { background: #6c4ce8; }
-  .btn.ghost { background: #f0f1f5; color: #384152; }
-  .btn.sm { padding: 6px 10px; font-size: 12px; flex: 1; justify-content: center; }
-  .btn:disabled { opacity: .55; }
-  .main { display: flex; flex-direction: column; min-width: 0; }
-  .top { display: flex; align-items: center; justify-content: space-between; padding: 14px 22px; border-bottom: 1px solid #edeef2; gap: 14px; }
-  .thbtns { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
-  .pubbadge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 6px 11px; border-radius: 7px; }
-  .pubbadge.pub { background: #e7f7ee; color: #12855a; }
-  .pubbadge.pend { background: #fdf1dc; color: #9a6a12; }
-  .th { display: flex; align-items: center; gap: 11px; min-width: 0; }
-  .thav { width: 38px; height: 38px; border-radius: 50%; flex: 0 0 38px; display: grid; place-items: center; font-size: 15px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #a78bfa, #7c5cff); overflow: hidden; }
-  .tn { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-  .mem { font-size: 10.5px; font-weight: 600; color: #8b90a0; background: #f0f1f5; padding: 2px 7px; border-radius: 999px; }
-  .tp { font-size: 12px; color: #9aa0ac; max-width: 460px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .pane { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 18px 22px; max-width: 820px; width: 100%; margin: 0 auto; }
-  .chat { flex: 1; display: flex; flex-direction: column; gap: 13px; overflow-y: auto; }
-  .empty { margin: auto; text-align: center; max-width: 360px; color: #9aa0ac; }
-  .eav { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto 14px; font-size: 20px; font-weight: 700; color: #fff; background: linear-gradient(135deg, #a78bfa, #7c5cff); overflow: hidden; }
-  .empty :global(svg) { color: #c3c7d0; }
-  .et { font-size: 15px; font-weight: 600; color: #1f2430; }
-  .es { font-size: 12.5px; margin-top: 5px; }
-  .msg { display: flex; gap: 9px; max-width: 90%; }
-  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
-  .av { width: 26px; height: 26px; border-radius: 7px; flex: 0 0 26px; display: grid; place-items: center; color: #fff; }
-  .av.ai { background: linear-gradient(135deg, #7c5cff, #5b8cff); }
-  .av.user { background: #cfd3dc; color: #4b5162; }
-  .mw { min-width: 0; }
-  .bub { padding: 9px 12px; border-radius: 11px; white-space: pre-wrap; font-size: 13px; line-height: 1.55; }
-  .msg.ai .bub { background: #f4f5f8; border: 1px solid #ebedf1; border-top-left-radius: 3px; }
-  .msg.user .bub { background: #7c5cff; color: #fff; border-top-right-radius: 3px; }
-  .refs { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
-  .ref { font-size: 11px; color: #6b7180; background: #f4f5f8; border: 1px solid #ebedf1; border-radius: 5px; padding: 2px 7px; }
-  .typ { display: inline-flex; gap: 3px; } .typ i { width: 5px; height: 5px; border-radius: 50%; background: #b3b8c4; animation: bl 1s infinite; }
-  .typ i:nth-child(2) { animation-delay: .2s; } .typ i:nth-child(3) { animation-delay: .4s; }
-  @keyframes bl { 0%,100% { opacity: .3 } 50% { opacity: 1 } }
-  .comp { display: flex; gap: 8px; margin-top: 12px; }
-  .cin { flex: 1; background: #fff; border: 1px solid #e2e4ea; border-radius: 9px; padding: 10px 13px; font: inherit; font-size: 13.5px; }
-  .cin:focus { outline: none; border-color: #7c5cff; box-shadow: 0 0 0 2px rgba(124,92,255,.12); }
-  .cs { width: 40px; border: 0; border-radius: 9px; cursor: pointer; color: #fff; background: #7c5cff; display: grid; place-items: center; }
-  .cs:disabled { opacity: .5; }
-  .vhead { font-size: 13px; font-weight: 600; color: #6b7180; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
-  .vhead span { background: #f0f1f5; color: #6b7180; border-radius: 999px; padding: 1px 8px; font-size: 12px; }
-  .vlist { display: flex; flex-direction: column; gap: 7px; }
-  .vrow { display: flex; align-items: center; gap: 11px; padding: 11px 13px; background: #fff; border: 1px solid #ebedf1; border-radius: 10px; }
-  .vrow:hover { border-color: #d9dce3; }
-  .vth { width: 34px; height: 34px; border-radius: 8px; flex: 0 0 34px; display: grid; place-items: center; color: #7c5cff; background: #efeaff; }
-  .vi { flex: 1; min-width: 0; }
-  .vt { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .vm { font-size: 11.5px; color: #9aa0ac; display: flex; align-items: center; gap: 5px; margin-top: 2px; }
-  .vlk, .vre { width: 30px; height: 30px; border-radius: 7px; border: 1px solid #e8e9ee; background: #fff; color: #6b7180; display: grid; place-items: center; cursor: pointer; text-decoration: none; }
-  .vlk:hover, .vre:hover { color: #7c5cff; border-color: #d3c9ff; background: #faf9ff; }
-  .mbg { position: fixed; inset: 0; background: rgba(28,32,42,.4); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 50; padding: 20px; }
-  .modal { width: 100%; max-width: 480px; background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 24px 60px -16px rgba(28,32,42,.35); }
-  .mh { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; } .mh b { font-size: 15px; }
-  .x { border: 0; background: transparent; color: #9aa0ac; cursor: pointer; }
-  .mrow { display: flex; gap: 8px; margin-top: 10px; }
-  .mest { display: flex; gap: 16px; margin-top: 12px; font-size: 12.5px; color: #6b7180; align-items: center; }
-  .mest b { color: #1f2430; font-size: 14px; margin-right: 3px; } .mest .c b { color: #7c5cff; }
-  .mest.mut { color: #9aa0ac; } .mest.err { color: #e5484d; gap: 7px; }
-  .steps { margin-top: 16px; display: flex; flex-direction: column; gap: 2px; }
-  .stp { display: flex; align-items: center; gap: 11px; padding: 5px 0; }
-  .sdot { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; flex: 0 0 22px; }
-  .stp.done .sdot { background: #7c5cff; color: #fff; } .stp.err .sdot { background: #e5484d; color: #fff; }
-  .stp.active .sdot { background: #efeaff; } .stp.pend .sdot { background: #f0f1f5; }
-  .pd { width: 6px; height: 6px; border-radius: 50%; background: #c3c7d0; }
-  .sp { width: 12px; height: 12px; border: 2px solid #d6ccff; border-top-color: #7c5cff; border-radius: 50%; animation: sp .7s linear infinite; }
-  @keyframes sp { to { transform: rotate(360deg) } }
-  .slb { font-size: 13px; }
-  .stp.done .slb, .stp.active .slb { color: #1f2430; font-weight: 500; } .stp.pend .slb { color: #b3b8c4; }
-  .sdone { margin-top: 10px; display: flex; align-items: center; gap: 7px; color: #16a34a; font-size: 13px; font-weight: 600; }
-  .serr { margin-top: 10px; color: #e5484d; font-size: 12.5px; }
-  @media (max-width: 800px) { .shell { grid-template-columns: 1fr; } .side { display: none; } }
-`;

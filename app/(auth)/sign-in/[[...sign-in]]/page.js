@@ -1,12 +1,10 @@
 import { SignIn } from "@clerk/nextjs";
+import AuthShell, { clerkAppearance } from "../../AuthShell";
 
 export default function Page() {
   return (
-    <div style={{
-      minHeight: "100vh", display: "grid", placeItems: "center", padding: 24,
-      background: "radial-gradient(900px 500px at 50% -10%, rgba(124,92,255,.18), transparent 60%), #07080c",
-    }}>
-      <SignIn fallbackRedirectUrl="/home" signUpUrl="/sign-up" />
-    </div>
+    <AuthShell title="Welcome Back" subtitle="Continue your inquiry into the archive.">
+      <SignIn fallbackRedirectUrl="/home" signUpUrl="/sign-up" appearance={clerkAppearance} />
+    </AuthShell>
   );
 }

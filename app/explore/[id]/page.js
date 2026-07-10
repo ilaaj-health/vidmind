@@ -2,10 +2,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import Markdown from "../../components/Markdown";
+import { MatIcon, Avatar, UserMsg, AiMsg, Composer } from "../../components/ui";
 
 const API = process.env.NEXT_PUBLIC_API_BASE || "";
-const initial = (n) => (n || "?").trim().charAt(0).toUpperCase();
 
 export default function GalleryChat() {
   const { id } = useParams();
@@ -35,77 +34,70 @@ export default function GalleryChat() {
   };
 
   if (p === false) return (
-    <div className="wrap"><div className="nf">This personality isn’t available. <Link href="/explore">Back to Explore</Link></div>
-      <style jsx>{`.wrap{max-width:760px;margin:0 auto;padding:60px 22px;font-family:system-ui}.nf{text-align:center;color:#8b90a0}a{color:#6a49f2}`}</style></div>
+    <div className="min-h-screen bg-background flex items-center justify-center px-6">
+      <div className="text-center border border-outline-variant bg-surface-container-lowest px-12 py-14">
+        <MatIcon name="search_off" className="text-4xl text-outline" />
+        <p className="font-headline-sm text-headline-sm mt-4 mb-2">This personality isn't available</p>
+        <Link href="/explore" className="font-mono-label text-mono-label uppercase tracking-widest text-primary underline underline-offset-4">
+          Back to the Archive
+        </Link>
+      </div>
+    </div>
   );
 
   return (
-    <div className="page">
-      <header className="top">
-        <Link href="/explore" className="back">← Explore</Link>
-        <div className="who">
-          <span className="av">{p?.image_url ? <img src={p.image_url} alt="" /> : initial(p?.name)}</span>
-          <div><div className="nm">{p?.name || "…"}</div><div className="mt">{p ? `${p.videos} ${p.videos === 1 ? "video" : "videos"}` : ""}</div></div>
+    <div className="h-screen flex flex-col bg-white text-on-surface font-body-md selection:bg-primary-fixed">
+      {/* Top bar */}
+      <header className="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop h-16 bg-surface-container-lowest border-b border-outline-variant shadow-sm z-10 shrink-0 gap-4">
+        <Link href="/explore" className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors no-underline shrink-0">
+          <MatIcon name="arrow_back" className="text-[20px]" />
+          <span className="font-mono-label text-mono-label uppercase tracking-widest hidden sm:inline">Archive</span>
+        </Link>
+        <div className="flex items-center gap-4 flex-1 min-w-0 justify-center">
+          <Avatar name={p?.name} image={p?.image_url} className="w-8 h-8" textClass="text-sm" />
+          <div className="min-w-0">
+            <h2 className="font-headline-sm text-lg text-primary leading-none truncate">{p?.name || "…"}</h2>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className="text-[10px] font-mono-label uppercase tracking-widest text-on-surface-variant">
+                {p ? `${p.videos} ${p.videos === 1 ? "source" : "sources"} · Public Archive` : "…"}
+              </span>
+            </div>
+          </div>
         </div>
-        <Link href="/home" className="open">Open app →</Link>
+        <Link
+          href="/home"
+          className="bg-primary text-on-primary px-5 py-2 font-mono-label text-mono-label uppercase tracking-widest hover:bg-on-surface-variant transition-transform active:scale-95 no-underline shrink-0"
+        >
+          Open App
+        </Link>
       </header>
 
-      <div className="chat">
-        {msgs.length === 0 && (
-          <div className="empty">
-            <span className="eav">{p?.image_url ? <img src={p.image_url} alt="" /> : initial(p?.name)}</span>
-            <div className="et">Chat with {p?.name || "this personality"}</div>
-            <div className="es">Ask anything about their videos — cited answers, no sign-in needed.</div>
-          </div>
-        )}
-        {msgs.map((m, i) => (
-          <div key={i} className={"msg " + m.who}>
-            <div className="bub">{m.typing ? <span className="typ"><i /><i /><i /></span> : (m.who === "ai" ? <Markdown text={m.text} /> : m.text)}</div>
-            {m.refs?.length > 0 && <div className="refs">{m.refs.slice(0, 4).map((r) => <span key={r.n} className="ref">[{r.n}] {(r.source || "").slice(0, 40)}</span>)}</div>}
-          </div>
-        ))}
-        <div ref={end} />
+      {/* Chat canvas */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-margin-desktop">
+        <div className="max-w-[800px] mx-auto space-y-12">
+          {msgs.length === 0 && (
+            <div className="pt-16 text-center">
+              <Avatar name={p?.name} image={p?.image_url} className="w-16 h-16 mx-auto mb-6" textClass="text-2xl" />
+              <p className="font-display-lg text-display-lg-mobile text-primary mb-3">
+                Inquire of {p?.name || "the archive"}.
+              </p>
+              <p className="font-body-md text-body-md text-on-surface-variant max-w-md mx-auto">
+                {p?.persona || "Ask anything about their videos — cited answers, no sign-in needed."}
+              </p>
+            </div>
+          )}
+          {msgs.map((m, i) =>
+            m.who === "user"
+              ? <UserMsg key={i} text={m.text} />
+              : <AiMsg key={i} text={m.text} refs={m.refs} typing={m.typing} />
+          )}
+          <div ref={end} />
+        </div>
       </div>
 
-      <div className="comp">
-        <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && ask()} placeholder={`Message ${p?.name || "personality"}…`} />
-        <button onClick={ask} disabled={busy}>{busy ? "…" : "Send"}</button>
-      </div>
-
-      <style jsx>{`
-        .page { max-width: 760px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; font-family: system-ui, -apple-system, sans-serif; color: #1b1b2e; }
-        .top { display: flex; align-items: center; gap: 14px; padding: 14px 20px; border-bottom: 1px solid #edeef2; position: sticky; top: 0; background: #fff; z-index: 5; }
-        .back { text-decoration: none; color: #8b90a0; font-size: 13.5px; flex-shrink: 0; }
-        .back:hover { color: #6a49f2; }
-        .who { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-        .av { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-size: 15px; font-weight: 600; color: #fff; background: linear-gradient(135deg,#a78bfa,#7c5cff); overflow: hidden; flex-shrink: 0; }
-        .av img { width: 100%; height: 100%; object-fit: cover; }
-        .nm { font-size: 15px; font-weight: 600; }
-        .mt { font-size: 12px; color: #a9adba; }
-        .open { text-decoration: none; color: #6a49f2; font-size: 13px; font-weight: 500; flex-shrink: 0; }
-        .chat { flex: 1; overflow-y: auto; padding: 22px 20px; display: flex; flex-direction: column; gap: 14px; }
-        .empty { text-align: center; margin: auto; display: flex; flex-direction: column; align-items: center; gap: 5px; }
-        .eav { width: 54px; height: 54px; border-radius: 15px; display: grid; place-items: center; font-size: 22px; font-weight: 600; color: #fff; background: linear-gradient(135deg,#a78bfa,#7c5cff); overflow: hidden; margin-bottom: 8px; }
-        .eav img { width: 100%; height: 100%; object-fit: cover; }
-        .empty .et { font-size: 16px; font-weight: 600; }
-        .empty .es { font-size: 13.5px; color: #8b90a0; max-width: 360px; }
-        .msg { display: flex; flex-direction: column; max-width: 82%; }
-        .msg.user { align-self: flex-end; align-items: flex-end; }
-        .bub { padding: 9px 13px; border-radius: 13px; font-size: 14px; line-height: 1.55; white-space: pre-wrap; }
-        .msg.ai .bub { background: #f4f5f8; border: 1px solid #ebedf1; border-top-left-radius: 3px; }
-        .msg.user .bub { background: #7c5cff; color: #fff; border-top-right-radius: 3px; }
-        .refs { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
-        .ref { font-size: 11px; color: #6b7180; background: #f4f5f8; border: 1px solid #ebedf1; border-radius: 5px; padding: 2px 7px; }
-        .typ { display: inline-flex; gap: 4px; padding: 2px 0; }
-        .typ i { width: 6px; height: 6px; border-radius: 50%; background: #b9bdc9; animation: b 1s infinite; }
-        .typ i:nth-child(2) { animation-delay: .15s; } .typ i:nth-child(3) { animation-delay: .3s; }
-        @keyframes b { 0%,60%,100% { opacity: .3; } 30% { opacity: 1; } }
-        .comp { display: flex; gap: 8px; padding: 14px 20px; border-top: 1px solid #edeef2; position: sticky; bottom: 0; background: #fff; }
-        .comp input { flex: 1; border: 1px solid #e2e4ea; border-radius: 11px; padding: 11px 14px; font: inherit; font-size: 14px; outline: none; }
-        .comp input:focus { border-color: #7c5cff; box-shadow: 0 0 0 2px rgba(124,92,255,.12); }
-        .comp button { border: 0; border-radius: 11px; padding: 0 20px; background: #7c5cff; color: #fff; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
-        .comp button:disabled { opacity: .5; }
-      `}</style>
+      {/* Composer */}
+      <Composer value={q} onChange={setQ} onSend={ask} busy={busy} placeholder={`Ask ${p?.name || "the archive"}...`} />
     </div>
   );
 }
