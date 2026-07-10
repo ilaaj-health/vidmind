@@ -37,7 +37,7 @@ export default function Landing() {
             <div className="lg:col-span-6 space-y-8">
               <div className="inline-flex items-center gap-2 px-3 py-1 bg-surface-container-high rounded-full border border-outline-variant">
                 <MatIcon name="auto_awesome" className="text-primary text-[16px]" />
-                <span className="font-mono-label text-[10px] tracking-[0.1em] text-on-surface-variant uppercase">Urdu &amp; Roman Urdu Support</span>
+                <span className="font-mono-label text-[10px] tracking-[0.1em] text-on-surface-variant uppercase">New: Urdu &amp; Roman Urdu Support</span>
               </div>
               <h1 className="font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface leading-tight">
                 Talk to the <span className="italic font-light">wisdom</span> of the world.

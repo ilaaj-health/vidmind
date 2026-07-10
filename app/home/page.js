@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { UserButton, useAuth, useUser, SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
+import { useAuth, useUser, useClerk, SignedIn, SignedOut, RedirectToSignIn } from "@clerk/nextjs";
 import { MatIcon, Avatar, UserMsg, AiMsg, Composer } from "../components/ui";
 
 const API = process.env.NEXT_PUBLIC_API_BASE || "";
@@ -62,6 +62,7 @@ function MonoLabel({ children, className = "" }) {
 export default function App() {
   const { getToken } = useAuth();
   const { user, isLoaded } = useUser();
+  const clerk = useClerk();
   const [spaces, setSpaces] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [wallet, setWallet] = useState(null);
@@ -326,16 +327,30 @@ export default function App() {
               </button>
             </nav>
 
-            {/* Footer */}
+            {/* Footer (Settings/Help/Logout per the design — all real Clerk actions) */}
             <div className="mt-auto pt-4 border-t border-outline-variant px-2 space-y-1">
               <a href="/explore" className="flex items-center gap-3 p-2 text-secondary hover:text-primary cursor-pointer transition-all no-underline">
                 <MatIcon name="language" />
                 <span className="font-body-md text-sm">Explore the Archive</span>
               </a>
-              <div className="flex items-center gap-3 p-2 text-secondary">
-                <UserButton afterSignOutUrl="/" />
-                <span className="font-body-md text-sm">Account</span>
-              </div>
+              <button
+                className="w-full flex items-center gap-3 p-2 text-secondary hover:text-primary cursor-pointer transition-all"
+                onClick={() => clerk.openUserProfile()}
+              >
+                <MatIcon name="settings" />
+                <span className="font-body-md text-sm">Settings</span>
+              </button>
+              <a href="/#how" className="flex items-center gap-3 p-2 text-secondary hover:text-primary cursor-pointer transition-all no-underline">
+                <MatIcon name="help" />
+                <span className="font-body-md text-sm">Help</span>
+              </a>
+              <button
+                className="w-full flex items-center gap-3 p-2 text-error hover:opacity-80 cursor-pointer transition-all mt-2"
+                onClick={() => clerk.signOut({ redirectUrl: "/" })}
+              >
+                <MatIcon name="logout" />
+                <span className="font-body-md text-sm">Logout</span>
+              </button>
             </div>
           </aside>
 

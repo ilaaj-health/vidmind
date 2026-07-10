@@ -52,9 +52,17 @@ export default function Explore() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
-            {list.map((p) => (
+            {list.map((p) => {
+              const dead = p.status === "deceased";
+              return (
               <div key={p.id} className="group relative bg-surface-container-lowest p-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border border-outline-variant flex flex-col">
-                <div className="relative h-64 w-full mb-6 overflow-hidden rounded-lg bg-surface-container-high grayscale group-hover:grayscale-0 transition-all duration-500">
+                {dead && (
+                  <div className="absolute top-8 right-8 z-10 bg-secondary-fixed text-on-secondary-fixed px-3 py-1 rounded-full flex items-center gap-1">
+                    <MatIcon name="auto_awesome" className="text-[14px]" />
+                    <span className="font-mono-label text-mono-label uppercase">In Memory</span>
+                  </div>
+                )}
+                <div className={`relative h-64 w-full mb-6 overflow-hidden rounded-lg bg-surface-container-high ${dead ? "grayscale group-hover:grayscale-0" : ""} transition-all duration-500`}>
                   {p.image_url ? (
                     <img src={p.image_url} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                   ) : (
@@ -82,7 +90,8 @@ export default function Explore() {
                   Chat Now <MatIcon name="arrow_forward" />
                 </Link>
               </div>
-            ))}
+              );
+            })}
 
             {/* Digitize a Voice CTA */}
             <Link

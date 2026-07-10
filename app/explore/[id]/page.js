@@ -58,9 +58,9 @@ export default function GalleryChat() {
           <div className="min-w-0">
             <h2 className="font-headline-sm text-lg text-primary leading-none truncate">{p?.name || "…"}</h2>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className={`w-1.5 h-1.5 rounded-full ${p?.status === "deceased" ? "bg-outline" : "bg-emerald-500"}`} />
               <span className="text-[10px] font-mono-label uppercase tracking-widest text-on-surface-variant">
-                {p ? `${p.videos} ${p.videos === 1 ? "source" : "sources"} · Public Archive` : "…"}
+                {p ? `${p.videos} ${p.videos === 1 ? "source" : "sources"} · ${p.status === "deceased" ? "In Memory" : "Public Archive"}` : "…"}
               </span>
             </div>
           </div>
