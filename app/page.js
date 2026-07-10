@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import { MatIcon } from "./components/ui";
 
 // The desktop installer, hosted on the vidmind repo's GitHub Release (repo is public).
@@ -7,6 +8,29 @@ const DOWNLOAD_URL =
 const APP_URL = "/home";
 
 export default function Landing() {
+  // Scrollspy: the nav underline follows the section crossing mid-viewport,
+  // and clears at the hero/CTA. Plain scroll listener — predictable everywhere.
+  const [section, setSection] = useState("");
+  useEffect(() => {
+    const onScroll = () => {
+      let cur = "";
+      for (const id of ["how", "features"]) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        if (r.top <= innerHeight * 0.45 && r.bottom >= innerHeight * 0.35) cur = id;
+      }
+      setSection(cur);
+    };
+    onScroll();
+    addEventListener("scroll", onScroll, { passive: true });
+    return () => removeEventListener("scroll", onScroll);
+  }, []);
+  const navLink = (id) =>
+    `font-body-md pb-1 no-underline border-b-2 transition-all ${
+      section === id ? "text-primary border-primary" : "text-on-surface-variant border-transparent hover:text-primary"
+    }`;
+
   return (
     <div className="bg-background text-on-surface font-body-md selection:bg-primary-fixed">
       {/* Top Navigation Bar */}
@@ -14,9 +38,9 @@ export default function Landing() {
         <div className="flex items-center gap-4">
           <a href="/" className="font-display-lg text-display-lg-mobile md:text-headline-sm text-primary no-underline">Persona</a>
           <nav className="hidden md:flex gap-8 ml-12">
-            <a className="font-body-md text-primary border-b-2 border-primary pb-1 no-underline" href="#how">How it works</a>
-            <a className="font-body-md text-on-surface-variant hover:text-primary transition-all no-underline" href="#features">Features</a>
-            <a className="font-body-md text-on-surface-variant hover:text-primary transition-all no-underline" href="/explore">Explore</a>
+            <a className={navLink("how")} href="#how" onClick={() => setSection("how")}>How it works</a>
+            <a className={navLink("features")} href="#features" onClick={() => setSection("features")}>Features</a>
+            <a className="font-body-md pb-1 border-b-2 border-transparent text-on-surface-variant hover:text-primary transition-all no-underline" href="/explore">Explore</a>
           </nav>
         </div>
         <div className="flex items-center gap-6">

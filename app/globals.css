@@ -8,6 +8,10 @@ body {
   margin: 0;
   padding: 0;
 }
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem; /* anchor jumps clear the fixed h-16 header */
+}
 body {
   -webkit-font-smoothing: antialiased;
   background-color: #fcf8fa; /* surface */
