@@ -10,5 +10,16 @@ const PUB_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
 export const dynamic = "force-dynamic";
 
 export default function AuthLayout({ children }) {
-  return <ClerkProvider publishableKey={PUB_KEY}>{children}</ClerkProvider>;
+  return (
+    // Same hardcoded in-app auth URLs as /home's layout — no hosted Clerk pages.
+    <ClerkProvider
+      publishableKey={PUB_KEY}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      signInFallbackRedirectUrl="/home"
+      signUpFallbackRedirectUrl="/home"
+    >
+      {children}
+    </ClerkProvider>
+  );
 }

@@ -7,5 +7,17 @@ const PUB_KEY = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
   "pk_test_Zml0dGluZy1yb2Jpbi03NS5jbGVyay5hY2NvdW50cy5kZXYk";
 
 export default function AppLayout({ children }) {
-  return <ClerkProvider publishableKey={PUB_KEY}>{children}</ClerkProvider>;
+  return (
+    // signInUrl/signUpUrl hardcoded so signed-out users always land on OUR styled
+    // pages — never Clerk's hosted accounts.dev page (which env-less deploys got).
+    <ClerkProvider
+      publishableKey={PUB_KEY}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      signInFallbackRedirectUrl="/home"
+      signUpFallbackRedirectUrl="/home"
+    >
+      {children}
+    </ClerkProvider>
+  );
 }
