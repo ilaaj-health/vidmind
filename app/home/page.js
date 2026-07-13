@@ -840,7 +840,7 @@ export default function App() {
               <div className="space-y-1">
                 <MonoLabel className="text-secondary">Processing Cost</MonoLabel>
                 <p className="font-display-lg text-display-lg-mobile text-primary">
-                  ${est.est_cost_usd} <span className="text-body-md font-normal font-sans">USD</span>
+                  {Number(est.est_price_pkr ?? 0).toLocaleString()} <span className="text-body-md font-normal font-sans">PKR</span>
                 </p>
               </div>
             </div>
