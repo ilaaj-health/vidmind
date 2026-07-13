@@ -365,9 +365,11 @@ export default function App() {
   };
 
   const stage = stageIndex(job);
-  // Add Video + Knowledge (and their sub-flows) run full-screen: no sidebar, just a
-  // back button + breadcrumb.
-  const fullScreen = ["ingest", "processing", "knowledge", "chunks"].includes(view);
+  // Everything except the chat workspace runs full-screen: no sidebar, just a back
+  // button + breadcrumb.
+  const fullScreen = ["ingest", "processing", "knowledge", "chunks", "personality", "wallet"].includes(view);
+  const personalityScoped = ["ingest", "processing", "knowledge", "chunks"].includes(view);
+  const crumbLabel = { ingest: "Add Video", processing: "Add Video", knowledge: "Knowledge Base", chunks: "Knowledge Base", personality: "New Personality", wallet: "Wallet" }[view] || "";
   const totalChunks = videos.reduce((n, v) => n + (Number(v.chunks) || 0), 0);
   const maxChunks = Math.max(1, ...videos.map((v) => Number(v.chunks) || 0));
 
@@ -655,10 +657,14 @@ export default function App() {
         <div className="h-6 w-px bg-outline-variant hidden sm:block shrink-0" />
         <nav className="flex items-center gap-1.5 min-w-0 text-sm">
           <button onClick={() => setView("chat")} className="text-on-surface-variant hover:text-primary shrink-0 font-body-md">Persona</button>
+          {personalityScoped && (
+            <>
+              <MatIcon name="chevron_right" className="text-outline text-[18px] shrink-0" />
+              <button onClick={() => setView("chat")} className="text-on-surface-variant hover:text-primary truncate max-w-[140px] font-body-md">{active?.name || "Personality"}</button>
+            </>
+          )}
           <MatIcon name="chevron_right" className="text-outline text-[18px] shrink-0" />
-          <button onClick={() => setView("chat")} className="text-on-surface-variant hover:text-primary truncate max-w-[140px] font-body-md">{active?.name || "Personality"}</button>
-          <MatIcon name="chevron_right" className="text-outline text-[18px] shrink-0" />
-          <span className="text-primary font-bold shrink-0 font-body-md">{(view === "knowledge" || view === "chunks") ? "Knowledge Base" : "Add Video"}</span>
+          <span className="text-primary font-bold shrink-0 font-body-md">{crumbLabel}</span>
         </nav>
       </div>
       <div className="flex items-center gap-6 shrink-0">
@@ -673,11 +679,13 @@ export default function App() {
             />
           </div>
         )}
-        <nav className="hidden md:flex items-center gap-6">
-          <Tab label="Add Video" target="ingest" />
-          <Tab label="Knowledge" target="knowledge" />
-          {publishTab}
-        </nav>
+        {personalityScoped && (
+          <nav className="hidden md:flex items-center gap-6">
+            <Tab label="Add Video" target="ingest" />
+            <Tab label="Knowledge" target="knowledge" />
+            {publishTab}
+          </nav>
+        )}
         <div className="flex items-center gap-3 border-l border-outline-variant pl-6">
           <Avatar name={active?.name} image={active?.image_url} className="w-8 h-8" textClass="text-sm" />
         </div>
@@ -700,11 +708,13 @@ export default function App() {
         )}
       </div>
       <div className="flex items-center gap-6 shrink-0">
-        <nav className="hidden md:flex items-center gap-6">
-          <Tab label="Add Video" target="ingest" />
-          <Tab label="Knowledge" target="knowledge" />
-          {publishTab}
-        </nav>
+        {personalityScoped && (
+          <nav className="hidden md:flex items-center gap-6">
+            <Tab label="Add Video" target="ingest" />
+            <Tab label="Knowledge" target="knowledge" />
+            {publishTab}
+          </nav>
+        )}
         <div className="flex items-center gap-3 border-l border-outline-variant pl-6">
           <Avatar name={active?.name} image={active?.image_url} className="w-8 h-8" textClass="text-sm" />
         </div>
