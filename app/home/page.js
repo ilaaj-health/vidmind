@@ -365,6 +365,9 @@ export default function App() {
   };
 
   const stage = stageIndex(job);
+  // Add Video + Knowledge (and their sub-flows) run full-screen: no sidebar, just a
+  // back button + breadcrumb.
+  const fullScreen = ["ingest", "processing", "knowledge", "chunks"].includes(view);
   const totalChunks = videos.reduce((n, v) => n + (Number(v.chunks) || 0), 0);
   const maxChunks = Math.max(1, ...videos.map((v) => Number(v.chunks) || 0));
 
@@ -639,6 +642,44 @@ export default function App() {
           >
             <MatIcon name="info" />
           </button>
+        </div>
+      </div>
+    </header>
+  ) : fullScreen ? (
+    <header className="flex justify-between items-center w-full px-6 lg:px-margin-desktop h-16 bg-surface-container-lowest border-b border-outline-variant shadow-sm z-10 shrink-0 gap-4">
+      <div className="flex items-center gap-3 min-w-0">
+        <button onClick={() => setView("chat")} className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors shrink-0" title="Back to chat">
+          <MatIcon name="arrow_back" />
+          <span className="hidden sm:inline font-mono-label text-mono-label uppercase tracking-widest">Back</span>
+        </button>
+        <div className="h-6 w-px bg-outline-variant hidden sm:block shrink-0" />
+        <nav className="flex items-center gap-1.5 min-w-0 text-sm">
+          <button onClick={() => setView("chat")} className="text-on-surface-variant hover:text-primary shrink-0 font-body-md">Persona</button>
+          <MatIcon name="chevron_right" className="text-outline text-[18px] shrink-0" />
+          <button onClick={() => setView("chat")} className="text-on-surface-variant hover:text-primary truncate max-w-[140px] font-body-md">{active?.name || "Personality"}</button>
+          <MatIcon name="chevron_right" className="text-outline text-[18px] shrink-0" />
+          <span className="text-primary font-bold shrink-0 font-body-md">{(view === "knowledge" || view === "chunks") ? "Knowledge Base" : "Add Video"}</span>
+        </nav>
+      </div>
+      <div className="flex items-center gap-6 shrink-0">
+        {view === "knowledge" && (
+          <div className="hidden lg:flex items-center bg-surface-container px-4 py-1.5 rounded-full border border-outline-variant">
+            <MatIcon name="search" className="text-on-surface-variant text-[20px] mr-2" />
+            <input
+              className="bg-transparent border-none outline-none focus:ring-0 text-sm w-56 placeholder:text-on-surface-variant"
+              placeholder="Search archive..."
+              value={kbSearch}
+              onChange={(e) => { setKbSearch(e.target.value); setKbPage(0); }}
+            />
+          </div>
+        )}
+        <nav className="hidden md:flex items-center gap-6">
+          <Tab label="Add Video" target="ingest" />
+          <Tab label="Knowledge" target="knowledge" />
+          {publishTab}
+        </nav>
+        <div className="flex items-center gap-3 border-l border-outline-variant pl-6">
+          <Avatar name={active?.name} image={active?.image_url} className="w-8 h-8" textClass="text-sm" />
         </div>
       </div>
     </header>
@@ -1724,7 +1765,7 @@ export default function App() {
       <SignedOut><RedirectToSignIn /></SignedOut>
       <SignedIn>
         <div className="flex h-screen overflow-hidden bg-surface text-on-surface font-body-md selection:bg-primary-fixed">
-          {sidebar}
+          {!fullScreen && sidebar}
           <main className="flex-1 flex flex-col relative overflow-hidden bg-white min-w-0">
             {header}
             {view === "chat" && chatView}
